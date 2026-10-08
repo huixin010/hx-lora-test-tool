@@ -1,0 +1,8 @@
+# 行尾统一：GitHub 上换行容易出错，这里按文件类型钉死
+# .bat 必须是 CRLF，否则 Windows 双击会打不开（历史踩坑）
+*.bat  text eol=crlf
+*.txt  text eol=crlf
+*.py   text eol=lf
+*.html text eol=lf
+*.json text eol=lf
+*.md   text eol=lf

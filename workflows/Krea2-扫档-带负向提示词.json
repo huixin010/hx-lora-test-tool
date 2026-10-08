@@ -1,0 +1,77 @@
+{
+  "_hx_note": "HX验丹炉 内置测试工作流 · 带负向提示词。跟「基础」的唯一区别：负向条件走了一段真的负向提示词，而不是 ConditioningZeroOut。用它测 LoRA 时，出图会比「基础」更干净一些。",
+  "_hx_placeholders": "__UNET__ / __CLIP__ / __CLIP_TYPE__ / __VAE__ 会在运行时按本机 config.json 自动替换。",
+  "_hx_patched": "测试时本工具会改写：节点 4 的 text（正向提示词）、节点 7 的宽高、节点 8 的 seed/步数/CFG/采样器、节点 10 的输出前缀；LoRA 插在节点 1 与节点 8 之间。节点 5 的负向提示词是你自己的，工具不会动它。",
+  "1": {
+    "class_type": "UNETLoader",
+    "inputs": {
+      "unet_name": "__UNET__",
+      "weight_dtype": "default"
+    }
+  },
+  "2": {
+    "class_type": "CLIPLoader",
+    "inputs": {
+      "clip_name": "__CLIP__",
+      "type": "__CLIP_TYPE__",
+      "device": "default"
+    }
+  },
+  "3": {
+    "class_type": "VAELoader",
+    "inputs": {
+      "vae_name": "__VAE__"
+    }
+  },
+  "4": {
+    "class_type": "CLIPTextEncode",
+    "inputs": {
+      "text": "a simple test image",
+      "clip": ["2", 0]
+    }
+  },
+  "5": {
+    "class_type": "CLIPTextEncode",
+    "inputs": {
+      "text": "lowres, blurry, jpeg artifacts, watermark, text, signature, extra limbs, bad anatomy, deformed, oversaturated",
+      "clip": ["2", 0]
+    }
+  },
+  "7": {
+    "class_type": "EmptyLatentImage",
+    "inputs": {
+      "width": 768,
+      "height": 768,
+      "batch_size": 1
+    }
+  },
+  "8": {
+    "class_type": "KSampler",
+    "inputs": {
+      "seed": 20261002,
+      "steps": 8,
+      "cfg": 1.0,
+      "sampler_name": "euler",
+      "scheduler": "simple",
+      "denoise": 1.0,
+      "model": ["1", 0],
+      "positive": ["4", 0],
+      "negative": ["5", 0],
+      "latent_image": ["7", 0]
+    }
+  },
+  "9": {
+    "class_type": "VAEDecode",
+    "inputs": {
+      "samples": ["8", 0],
+      "vae": ["3", 0]
+    }
+  },
+  "10": {
+    "class_type": "SaveImage",
+    "inputs": {
+      "images": ["9", 0],
+      "filename_prefix": "HX验丹炉/test"
+    }
+  }
+}

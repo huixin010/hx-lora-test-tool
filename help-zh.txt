@@ -1,0 +1,27 @@
+这台电脑上没有找到任何 Python —— 工具起不来。
+
+正常情况下这一步不会出现：启动脚本会先扫各个盘符找 ComfyUI
+自带的 python_embeded，找不到才用系统里装的 Python。
+走到这里，说明两种 Python 都没有。
+
+【办法一：告诉它 ComfyUI 装在哪】
+1) 用记事本打开本文件夹里的 config.json
+2) 把 "comfy_root" 那一行改成你的 ComfyUI 文件夹，例如：
+      "comfy_root": "D:\\ComfyUI_windows_portable"
+   注意：两个反斜杠，不要带多余的引号
+3) 保存后，重新双击 start.bat
+
+   不会找 ComfyUI 在哪？右键你平时启动 ComfyUI 的那个图标 →
+   打开文件所在位置，那一层目录（里面应该有个 python_embeded
+   文件夹）就是 comfy_root。
+
+【办法二：直接指定 python.exe】
+在本文件夹里新建 python_path.txt，里面只写一行，
+填你 python.exe 的完整路径，例如：
+      D:\\ComfyUI_windows_portable\\python_embeded\\python.exe
+
+【办法三：装个 Python】
+去 python.org 下载安装，装的时候勾上 “Add Python to PATH”，
+装完重新双击 start.bat。
+
+完整的排查步骤见 README.md（GitHub 版）或 README.txt 第八节（分享包）。

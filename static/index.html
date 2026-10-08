@@ -1,0 +1,4823 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="author" content="HX-会心一姬">
+<!-- HX验丹炉-V0.5 · Copyright (c) 2026 HX-会心一姬 · MIT License -->
+<title>HX验丹炉-V0.5.4</title>
+<style>
+:root{
+  color-scheme:light;
+  --bg:#f4f5f7; --card:#fff; --line:#e4e5ea; --ink:#1c1c22;
+  --dim:#78787f; --brand:#4f46e5; --soft:#eef0fe; --deep:#3730a3;
+  --ok:#16a34a; --bad:#dc2626; --warn:#d97706;
+  /* 品质等级配色。服务端 lora_grade.py 以内联样式注入的是 var(--hx-grade-*)，
+     桌面版那层注入样式会覆盖这几个值去适配暗色；这里是网页版（不注入）的
+     兜底，缺了等级色就会变成继承色、看不出品级。 */
+  --hx-grade-rej-fg:#5b5b66;  --hx-grade-rej-bg:#ececf1;
+  --hx-grade-low-fg:#15803d;  --hx-grade-low-bg:#e7f6ec;
+  --hx-grade-mid-fg:#1d4ed8;  --hx-grade-mid-bg:#e6edfd;
+  --hx-grade-top-fg:#6d28d9;  --hx-grade-top-bg:#f0e9fd;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);
+  font:14px/1.55 "Microsoft YaHei",-apple-system,"Segoe UI",sans-serif}
+header{height:54px;display:flex;align-items:center;justify-content:space-between;
+  padding:0 18px;background:#fff;border-bottom:1px solid var(--line);
+  position:sticky;top:0;z-index:20}
+.brand{font-weight:700;font-size:15px;display:flex;align-items:center;gap:9px}
+.brand .ver{font-size:11.5px;font-weight:600;color:var(--dim);letter-spacing:.02em;
+  border:1px solid var(--line);border-radius:5px;padding:1px 6px}
+.brand .by{font-size:11px;font-weight:500;color:var(--dim);opacity:.8}
+.brand i{width:9px;height:9px;border-radius:50%;background:var(--brand);display:block}
+.conn{font-size:12.5px;color:var(--dim);display:flex;align-items:center;gap:6px}
+.conn b{width:8px;height:8px;border-radius:50%;background:#c9c9d0;display:block}
+.conn.ok b{background:var(--ok)} .conn.bad b{background:var(--bad)}
+.diagwrap{max-width:1860px;margin:0 auto;padding:12px 16px 0}
+.diag{padding:9px 14px;border-radius:10px;font-size:12.5px;line-height:1.65;
+  border:1px solid transparent}
+.diag.ok{background:#f0fdf4;border-color:#bbf7d0;color:#166534}
+.diag.warn{background:#fffbeb;border-color:#fde68a;color:#92400e}
+.diag b{font-weight:600}
+.diag ul{margin:5px 0 0;padding-left:20px}
+.diag li{margin:2px 0}
+.diag .fix{margin-top:9px;padding-top:9px;border-top:1px dashed #fcd34d;
+  display:flex;align-items:center;gap:9px;flex-wrap:wrap}
+details>summary{cursor:pointer;list-style:none;display:flex;align-items:center;
+  gap:8px;outline:none}
+details>summary::-webkit-details-marker{display:none}
+details>summary::before{content:'\25B8';color:var(--dim);font-size:12px;
+  transition:transform .15s;display:inline-block}
+details[open]>summary::before{transform:rotate(90deg)}
+.badge{font-size:11px;padding:1px 7px;border-radius:20px;font-weight:500;
+  background:#eceef3;color:#55555f}
+.badge.ok{background:#f0fdf4;color:#166534}
+.badge.bad{background:#fef2f2;color:#b91c1c}
+.mf{display:grid;gap:9px;margin-top:11px}
+.mf label{display:block;font-size:12px;color:var(--dim)}
+.mf select{margin-top:3px}
+/* V0.4.2：ComfyUI 自动扫描的结果列表 */
+.scanbox{margin-top:7px;border:1px solid var(--line);border-radius:8px;
+  padding:8px;background:var(--soft)}
+.scanbox .srow{display:flex;align-items:flex-start;gap:7px;padding:6px 4px;
+  border-radius:6px;cursor:pointer;font-size:11.5px;line-height:1.5}
+.scanbox .srow:hover{background:var(--line)}
+.scanbox .srow.on{background:var(--line);outline:1px solid var(--deep)}
+.scanbox .sp{flex:1;min-width:0;word-break:break-all;color:var(--ink)}
+.scanbox .sm{color:var(--dim);flex:none;font-size:11px}
+.scanbox .swhy{color:var(--dim);font-size:10.5px}
+.layout{display:flex;align-items:flex-start;gap:16px;padding:16px;
+  max-width:1860px;margin:0 auto}
+.panel{width:374px;flex:0 0 374px;display:flex;flex-direction:column;gap:12px;
+  position:sticky;top:70px;max-height:calc(100vh - 88px);overflow-y:auto;
+  padding-right:4px}
+.blk{background:var(--card);border:1px solid var(--line);border-radius:12px;
+  padding:14px}
+.blk h3{font-size:13px;margin:0 0 10px;color:#33333b;letter-spacing:.2px}
+.stage{flex:1;min-width:0;background:var(--card);border:1px solid var(--line);
+  border-radius:12px;padding:16px;min-height:calc(100vh - 88px)}
+.inp{width:100%;padding:7px 10px;border:1px solid var(--line);border-radius:8px;
+  font:13px/1.5 inherit;background:#fff;color:var(--ink);outline:none}
+.inp:focus{border-color:var(--brand);box-shadow:0 0 0 3px var(--soft)}
+textarea.inp{resize:vertical}
+.btn{border:1px solid transparent;border-radius:8px;padding:8px 14px;font:13px inherit;
+  cursor:pointer;background:#eceef3;color:#33333b;transition:.13s}
+.btn:hover{filter:brightness(.97)}
+.btn.primary{background:var(--brand);color:#fff;font-weight:600;padding:10px 22px;font-size:14px}
+.btn.primary:hover{background:var(--deep)}
+.btn.danger{background:#fdeceb;color:var(--bad)}
+.btn.ghost{background:#f3f4f7;border-color:var(--line)}
+.btn.danger{background:#fff;border-color:#eec9c4;color:#c0392b}
+.btn.danger:hover{background:#fdf3f2;border-color:#e0a79f}
+.btn.sm{padding:5px 10px;font-size:12px}
+.btn.wide{width:100%;margin-top:8px}
+.btn:disabled{opacity:.42;cursor:not-allowed}
+.row{display:flex;gap:8px;align-items:center}
+.row .inp{flex:1}
+.tip{font-size:11.5px;color:var(--dim);margin:8px 0 0}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px}
+.chips:empty{display:none}
+.chip{background:var(--soft);color:var(--deep);border-radius:20px;padding:3px 10px;
+  font-size:12px;display:flex;align-items:center;gap:6px}
+.chip x{cursor:pointer;opacity:.6;font-style:normal}
+.chip x:hover{opacity:1}
+.loralist{margin-top:8px;max-height:230px;overflow-y:auto;border:1px solid var(--line);
+  border-radius:8px}
+.lgroup{display:flex;justify-content:space-between;align-items:center;padding:7px 10px;
+  background:#f7f8fa;cursor:pointer;font-size:12.5px;font-weight:600;color:#41414a;
+  border-bottom:1px solid var(--line);user-select:none}
+.lgroup i{font-style:normal;color:var(--dim);font-weight:400;font-size:11.5px}
+.lbody{border-bottom:1px solid var(--line)}
+.litem{display:flex;align-items:center;gap:8px;padding:6px 12px;cursor:pointer;font-size:12.5px}
+.litem:hover{background:#f7f8fa}
+.litem.on{background:var(--soft);color:var(--deep);font-weight:600}
+.litem input{margin:0;accent-color:var(--brand)}
+.litem.isfixed input{cursor:not-allowed}
+.fixtag{margin-left:auto;font-size:10.5px;color:var(--dim);font-style:normal;
+  background:#eceef3;padding:1px 6px;border-radius:10px;flex:0 0 auto}
+.sbtns{display:flex;flex-wrap:wrap;gap:6px}
+.sb{border:1px solid var(--line);background:#f7f8fa;border-radius:8px;padding:5px 9px;
+  font-size:12.5px;cursor:pointer;font-family:ui-monospace,Consolas,monospace;
+  display:inline-flex;align-items:center;gap:6px}
+.sb.on{background:var(--brand);color:#fff;border-color:var(--brand);font-weight:600}
+.sb.fixed{background:#eceef3;color:var(--dim);cursor:default;padding:5px 12px}
+.sb x{cursor:pointer;opacity:.42;font-style:normal;font-size:13px;line-height:1;
+  padding:1px 2px;border-radius:4px;transition:opacity .12s}
+.sb x:hover{opacity:1;background:rgba(192,57,43,.16)}
+.fixlist{margin-top:9px;display:flex;flex-direction:column;gap:6px}
+.fixlist:empty{display:none}
+.fitem{display:flex;align-items:center;gap:8px;background:#f7f8fa;
+  border:1px solid var(--line);border-radius:8px;padding:5px 8px;font-size:12.5px}
+.fitem .nm{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+  color:var(--deep);font-weight:600}
+.fitem input{width:64px;padding:3px 6px;border:1px solid var(--line);border-radius:6px;
+  font:12.5px/1.4 ui-monospace,Consolas,monospace;text-align:center;background:#fff;
+  color:var(--ink);outline:none}
+.fitem input:focus{border-color:var(--brand);box-shadow:0 0 0 2px var(--soft)}
+.fitem x{cursor:pointer;opacity:.42;font-style:normal;font-size:14px;line-height:1;
+  padding:1px 3px;border-radius:4px}
+.fitem x:hover{opacity:1;background:rgba(192,57,43,.16)}
+.fixnone{margin-top:8px;font-size:11.5px;color:var(--dim)}
+.pblock{border:1px solid var(--line);border-radius:9px;padding:9px;margin-bottom:8px;
+  background:#fbfbfd}
+.pblock .plabel{font-weight:600;font-size:12.5px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.grid2 label{font-size:11.5px;color:var(--dim);display:flex;flex-direction:column;gap:3px}
+/* V0.5.1：三个板块各是一个独立地址（/run /hist /lib），
+   所以这里是「板块切换」的链接，不再是页内标签按钮。 */
+.navtabs{display:flex;gap:5px;align-items:center}
+.navtabs .snlink{border:0;background:transparent;padding:7px 16px;border-radius:9px;
+  cursor:pointer;font:13px inherit;color:var(--dim);text-decoration:none;
+  display:inline-flex;align-items:center;transition:background .14s,color .14s}
+.navtabs .snlink:hover{background:var(--soft);color:var(--deep)}
+.navtabs .snlink.on{background:var(--brand);color:#fff;font-weight:600}
+.actions{display:flex;align-items:center;gap:12px;margin-bottom:14px}
+.est{font-size:12.5px;color:var(--dim);margin-left:auto}
+.progwrap{margin-bottom:16px}
+.prog{height:7px;background:#eceef3;border-radius:4px;overflow:hidden}
+.prog>div{height:100%;width:0;background:linear-gradient(90deg,#6366f1,#4f46e5);
+  transition:width .35s ease}
+.progtext{font-size:12px;color:var(--dim);margin-top:6px}
+.bestbox{background:linear-gradient(90deg,#eef0fe,#f8f9ff);border:1px solid #dcdffb;
+  border-radius:10px;padding:11px 14px;font-size:13px;margin-bottom:14px;color:var(--deep)}
+.bestbox b{font-size:14px}
+.lsec{margin-bottom:26px}
+.lhead{font-size:14px;font-weight:600;padding:8px 0 10px;display:flex;align-items:center;
+  gap:10px;flex-wrap:wrap}
+.badge{background:var(--warn);color:#fff;font-size:11.5px;padding:2px 9px;
+  border-radius:20px;font-weight:600}
+.mgrid{border-collapse:separate;border-spacing:8px}
+.mgrid th{font-size:12.5px;color:#3a3a44;font-weight:600}
+.mgrid th.rowh{text-align:left;vertical-align:middle;width:110px;font-weight:500}
+.cell{width:206px}
+.cell .ph{width:206px;height:206px;border-radius:8px;background:#f0f0f4;
+  display:flex;align-items:center;justify-content:center;color:#a8a8b2;font-size:12.5px;
+  border:1px dashed #dcdce3}
+.cell .ph.run{background:#eef0fe;color:var(--brand);border-color:#c7cbf7;
+  border-style:solid}
+.cell .ph.err{background:#fdeceb;color:var(--bad);border-color:#f5c6c2;
+  border-style:solid;font-size:11.5px;padding:0 10px;text-align:center}
+.cell img{width:206px;height:206px;display:block;border-radius:8px;background:#eee;
+  box-shadow:0 1px 3px rgba(0,0,0,.09);cursor:zoom-in}
+.cell .wrapimg{position:relative}
+.cell .cap{position:absolute;right:6px;bottom:6px;background:rgba(0,0,0,.7);color:#fff;
+  font-size:11px;padding:1px 7px;border-radius:5px}
+.cell .cap.star{background:var(--warn);font-weight:600}
+.cell .mline{font-size:11px;color:var(--dim);margin-top:4px;
+  font-family:ui-monospace,Consolas,monospace}
+.result{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-top:12px;
+  padding-top:14px;border-top:1px solid var(--line)}
+.hide{display:none!important}
+.hitem{border:1px solid var(--line);border-radius:10px;padding:12px 14px;margin-bottom:10px;
+  background:#fbfbfd;display:flex;gap:13px}
+.hthumb{flex:0 0 116px;text-decoration:none}
+.hthumb img{width:116px;height:116px;object-fit:cover;border-radius:9px;display:block;
+  background:#eee;box-shadow:0 1px 4px rgba(0,0,0,.1)}
+.hthumb .noimg{width:116px;height:116px;border-radius:9px;background:#f0f0f4;
+  display:flex;align-items:center;justify-content:center;color:#b0b0ba;font-size:12px}
+.hbody{flex:1;min-width:0}
+.hitem b{font-size:13.5px}
+.hmeta{font-size:11.5px;color:var(--dim);margin-left:8px}
+.hbest{font-size:12.5px;color:var(--deep);margin-top:5px}
+.hfix{font-size:12px;color:var(--dim);margin-top:5px}
+.hv{font-size:12px;color:#4a4a55;margin-top:5px;line-height:1.6}
+.hact{display:flex;gap:8px;margin-top:9px;flex-wrap:wrap}
+.hact a{text-decoration:none}
+/* V0.5.1：历史记录搬进鉴定台的窄列（330px），横排会挤成一团，改竖排 */
+.hlist .hitem{flex-direction:column;gap:9px;padding:11px 12px}
+.hlist .hthumb,.hlist .hthumb img,.hlist .hthumb .noimg{flex:none;width:100%}
+.hlist .hthumb img,.hlist .hthumb .noimg{height:132px}
+.hlist .hmeta{display:block;margin:3px 0 0}
+
+/* ---- 触发词 ---- */
+.triglist{display:flex;flex-direction:column;gap:6px}
+.trigrow{display:flex;align-items:center;gap:8px}
+.trigrow .nm{flex:0 0 128px;font-size:12px;overflow:hidden;text-overflow:ellipsis;
+  white-space:nowrap;color:#41414a}
+.trigrow .nm em{font-style:normal;font-size:10.5px;padding:1px 5px;border-radius:9px;
+  background:#eceef3;color:var(--dim);margin-left:4px}
+.trigrow .nm em.fx{background:#eef0fe;color:var(--deep)}
+.trigrow input{flex:1;min-width:0;padding:4px 8px;border:1px solid var(--line);
+  border-radius:7px;font:12.5px/1.4 ui-monospace,Consolas,monospace;background:#fff;
+  color:var(--ink);outline:none}
+.trigrow input:focus{border-color:var(--brand);box-shadow:0 0 0 2px var(--soft)}
+.tsrc{font-size:11px;color:var(--dim);flex:none;white-space:nowrap}
+.tsrc.ok{color:#2c6b3f}
+.tsrc.ask a{color:var(--deep);text-decoration:none;border-bottom:1px dashed currentColor}
+.tchip{font-size:11px;padding:1px 7px;border-radius:20px;background:#eef2ff;
+  color:#3a4a8a;border:1px solid #d8def5;cursor:pointer;flex:none;
+  max-width:170px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tchip:hover{background:#e2e9ff}
+.trigempty{font-size:11.5px;color:var(--dim);line-height:1.6}
+.preview{margin-top:9px;font-size:11.5px;color:var(--dim);background:#f7f8fa;
+  border:1px dashed var(--line);border-radius:8px;padding:8px 10px;line-height:1.7;
+  word-break:break-all}
+.preview b{color:#41414a;font-weight:600}
+
+/* ---- 结论面板 ---- */
+.vtitle{font-size:12.5px;font-weight:600;color:var(--deep);margin-bottom:8px}
+.vrow{padding:8px 12px;border-radius:9px;margin-bottom:7px;border-left:3px solid #cbd5e1;
+  background:rgba(255,255,255,.7)}
+.vrow:last-child{margin-bottom:0}
+.vrow.v-ok{border-left-color:var(--ok);background:#f6fdf8}
+.vrow.v-warn{border-left-color:var(--warn);background:#fffcf5}
+.vrow.v-bad{border-left-color:var(--bad);background:#fff7f7}
+.vrow .pill{font-size:11px;padding:1px 8px;border-radius:20px;font-weight:600;color:#fff;
+  margin-left:8px}
+.pill.p-ok{background:var(--ok)}.pill.p-warn{background:var(--warn)}
+.pill.p-bad{background:var(--bad)}
+.vtext{font-size:12px;color:#4a4a55;margin-top:4px;line-height:1.6}
+
+/* ---- 离线模式 / 弹窗 ---- */
+.diag.offline{background:#f6f7fb;border-color:#dfe3ee;color:#3b4152}
+.diag code{background:#eef0f6;padding:1px 6px;border-radius:5px;
+  font-family:ui-monospace,Consolas,monospace;font-size:11.5px}
+.dimtxt{font-size:12px;color:var(--dim)}
+.modal{position:fixed;inset:0;background:rgba(22,22,30,.5);display:none;
+  align-items:center;justify-content:center;z-index:120;padding:26px}
+.modal.on{display:flex}
+.mbox{background:#fff;border-radius:14px;width:min(900px,100%);max-height:100%;
+  display:flex;flex-direction:column;overflow:hidden;
+  box-shadow:0 24px 60px rgba(0,0,0,.28)}
+.mhead{display:flex;align-items:center;justify-content:space-between;
+  padding:14px 18px;border-bottom:1px solid var(--line);font-weight:600;font-size:14px}
+.mhead x{cursor:pointer;font-style:normal;font-size:20px;line-height:1;color:var(--dim);
+  padding:0 4px}
+.mhead x:hover{color:var(--bad)}
+.mbody{padding:16px 18px;overflow-y:auto}
+.mbody .grid2{gap:12px}
+.mfoot{display:flex;align-items:center;justify-content:space-between;gap:12px;
+  padding:12px 18px;border-top:1px solid var(--line);background:#fafbfd}
+.imggrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(132px,1fr));gap:10px;
+  margin-top:12px;max-height:330px;overflow-y:auto;padding:2px}
+.imggrid:empty{display:none}
+.icell{border:2px solid transparent;border-radius:10px;overflow:hidden;cursor:pointer;
+  background:#f7f8fa}
+.icell img{width:100%;height:104px;object-fit:cover;display:block;background:#eee}
+.icell .inm{font-size:10.5px;color:var(--dim);padding:4px 6px;white-space:nowrap;
+  overflow:hidden;text-overflow:ellipsis}
+.icell:hover{border-color:#c7cbf7}
+.icell.on{border-color:var(--brand);background:var(--soft)}
+.chk{display:flex;align-items:center;gap:8px;font-size:12.5px;color:#41414a;
+  margin-top:8px;cursor:pointer}
+.chk input{margin:0;accent-color:var(--brand)}
+.hhead{display:flex;justify-content:space-between;align-items:center;
+  font-size:12.5px;color:var(--dim);margin-bottom:10px}
+.empty{color:var(--dim);font-size:13px;padding:24px 0;text-align:center}
+.lightbox{position:fixed;inset:0;background:rgba(20,20,26,.86);display:none;
+  align-items:center;justify-content:center;z-index:99;cursor:zoom-out;padding:24px}
+.lightbox img{max-width:100%;max-height:100%;border-radius:8px}
+.lightbox.on{display:flex}
+
+/* ---------- LoRA 库 ---------- */
+.libbox{margin-bottom:16px}
+.librow{display:flex;align-items:center;gap:9px;flex-wrap:wrap;margin-bottom:10px}
+.librow-t{margin-top:12px;padding-top:12px;border-top:1px solid var(--line)}
+.liblab{font-size:12.5px;color:var(--dim);flex:none}
+.libmeta{font-size:12px;color:var(--dim)}
+.sel{border:1px solid var(--line);border-radius:8px;padding:6px 9px;font:12.5px inherit;
+  background:var(--card);color:var(--ink);max-width:260px}
+.inp{border:1px solid var(--line);border-radius:8px;padding:6px 9px;font:12.5px inherit;
+  background:var(--card);color:var(--ink)}
+.wlist{display:flex;flex-wrap:wrap;gap:6px;flex:1}
+.witem{background:#f3f4f7;border:1px solid var(--line);border-radius:20px;
+  padding:3px 6px 3px 10px;font-size:12px;display:flex;align-items:center;gap:6px}
+.witem x{cursor:pointer;opacity:.55;font-style:normal;padding:0 3px}
+.witem x:hover{opacity:1;color:var(--bad)}
+
+.inbox{max-height:330px;overflow:auto;border:1px solid var(--line);border-radius:9px}
+.ibrow{display:flex;align-items:flex-start;gap:10px;padding:9px 11px;
+  border-bottom:1px solid #f0f1f4}
+.ibrow:last-child{border-bottom:0}
+.ibrow:hover{background:#fafbfd}
+.ibrow input{margin-top:2px;accent-color:var(--brand);flex:none}
+.ibmain{flex:1;min-width:0}
+.ibname{font-size:12.5px;word-break:break-all;line-height:1.45}
+.ibsub{font-size:11.5px;color:var(--dim);margin-top:3px;display:flex;gap:8px;
+  flex-wrap:wrap;align-items:center}
+.tag{display:inline-block;background:#eef1f6;border-radius:4px;padding:1px 5px;
+  font-size:11px;color:#55555f}
+.badge{font-size:10.5px;border-radius:4px;padding:1px 6px;flex:none}
+.b-lora{background:#e6f5ec;color:#157a45}
+.b-base{background:#f0f1f4;color:#6b6b76}
+.b-unknown{background:#fdf3e3;color:#8a5a0b}
+.b-warn{background:#fdeceb;color:var(--bad)}
+
+/* V0.4 右键菜单：在 LoRA 上右键弹出的品质/标签操作面板 */
+.ctxmenu{position:fixed;z-index:200;min-width:212px;max-width:290px;
+  background:#fff;border:1px solid var(--line);border-radius:11px;
+  box-shadow:0 14px 38px rgba(20,20,30,.19);padding:5px;display:none;
+  font-size:12.5px;max-height:78vh;overflow:auto}
+.ctxmenu.on{display:block}
+.ctxmenu .cmhead{padding:7px 10px 8px;border-bottom:1px solid #eef0f4;
+  margin-bottom:4px}
+.ctxmenu .cmhead b{display:block;font-size:12.5px;color:var(--deep);
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ctxmenu .cmhead span{color:var(--dim);font-size:11px}
+.ctxmenu .cmsub{font-size:10.5px;color:var(--dim);padding:6px 10px 3px;
+  letter-spacing:.04em}
+.ctxmenu .cmitem{display:flex;align-items:center;gap:8px;padding:6px 10px;
+  border-radius:7px;cursor:pointer;line-height:1.4}
+.ctxmenu .cmitem:hover{background:var(--soft)}
+.ctxmenu .cmitem .sw{width:9px;height:9px;border-radius:3px;flex:none;
+  border:1px solid rgba(0,0,0,.12)}
+.ctxmenu .cmitem .lb{flex:1;min-width:0}
+.ctxmenu .cmitem .dsc{color:var(--dim);font-size:11px;flex:none}
+.ctxmenu .cmitem .tick{width:13px;flex:none;color:var(--brand);font-weight:700}
+.ctxmenu .cmitem.danger:hover{background:#fdeceb}
+.ctxmenu .cmitem.danger .lb{color:var(--bad)}
+.ctxmenu .cmsep{height:1px;background:#eef0f4;margin:4px 2px}
+.ctxmenu .cmitem .x{margin-left:auto;flex:none;color:var(--dim);
+  font-size:13px;padding:0 3px;border-radius:4px}
+.ctxmenu .cmitem .x:hover{background:#fdeceb;color:var(--bad)}
+.ctxmenu .cmin{display:flex;gap:6px;padding:6px 8px 4px}
+.ctxmenu .cmin input{flex:1;min-width:0;font-size:12px;padding:4px 8px;
+  border:1px solid var(--line);border-radius:7px;font-family:inherit}
+.ctxmenu .cmin button{flex:none;font-size:11.5px;padding:4px 10px;
+  border-radius:7px;border:1px solid var(--line);background:#fafbfd;
+  cursor:pointer;font-family:inherit}
+.ctxmenu .cmin button:hover{border-color:var(--brand);color:var(--brand)}
+.ctxmenu .cmempty{padding:5px 10px 7px;color:var(--dim);font-size:11.5px}
+/* 定了级的 LoRA，名字用等级自己的颜色，一眼扫出哪些是好丹。
+   颜色和「上品加粗」都由 JS 从后端 grades 表内联输出（nameGradeStyle()）——
+   颜色在 lora_grade.py 里是唯一真相，CSS 再抄一份必然和标签 chip 对不上。
+   所以这里**一条规则都不留**，不是漏了。 */
+/* 品质 chip 的选中态：反白（字变底色），不然点了看不出生效 */
+.gchip.qgrade.on{box-shadow:0 0 0 2px rgba(0,0,0,.09)}
+.dupes{margin-top:12px;border:1px solid #f0d9a8;background:#fffbf2;
+  border-radius:9px;padding:11px 13px;font-size:12.5px}
+.dgrp{margin-bottom:9px}
+.dgrp:last-child{margin-bottom:0}
+.dgrp b{color:#8a5a0b}
+.dgrp .p{color:#55555f;margin-top:3px;word-break:break-all;line-height:1.6}
+.duphead{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:9px}
+.duphead b{color:#8a5a0b;font-size:13px}
+.dupact{margin-left:auto;display:flex;gap:6px;flex-wrap:wrap}
+.dgrp{margin-bottom:10px;padding:8px 10px;border:1px solid #f2e3c2;
+  border-radius:7px;background:#fff}
+.dhead{display:flex;align-items:center;gap:8px;margin-bottom:5px}
+.dtag{font-size:11px;padding:1px 7px;border-radius:20px;background:#fff4dd;
+  color:#8a5a0b;border:1px solid #f0dcae}
+.dtag.warn{background:#ffe9e9;color:#a33;border-color:#f3c9c9}
+.df{display:flex;align-items:center;gap:7px;padding:3px 0;line-height:1.5}
+.df input{margin:0;accent-color:var(--brand);flex:none}
+.df .drel{flex:1;min-width:0;word-break:break-all;color:#55555f}
+.df.keep .drel{color:#2c6b3f;font-weight:600}
+.df input:checked + .drel{color:#a33;text-decoration:line-through}
+.dbadge{font-size:10.5px;padding:0 6px;border-radius:20px;flex:none;
+  background:#f1f1f4;color:#7a7a88}
+.dbadge.keep{background:#e4f3e9;color:#2c6b3f}
+
+/* ---------------- V0.3：测试方案库 ---------------- */
+.pfbox{border:1px solid var(--line);border-radius:10px;background:#fbfbfd;
+  padding:10px 11px;margin-bottom:10px}
+.pfbox.on{border-color:#c7d0fb;background:var(--soft)}
+.pfhead{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.pfhead select{flex:1;min-width:130px}
+.pfband{font-size:10.5px;padding:1px 7px;border-radius:20px;background:#fff;
+  border:1px solid var(--line);color:var(--dim);flex:none}
+.pfbox.on .pfband{background:#fff;border-color:#c7d0fb;color:var(--deep)}
+.pfdesc{font-size:12px;color:#55555f;margin-top:7px;line-height:1.6}
+.pfhow{font-size:12px;color:#55555f;margin-top:6px;line-height:1.65;
+  padding:7px 9px;background:#fff;border-radius:7px;border:1px solid var(--line)}
+.pfhow b{color:var(--deep)}
+.pffocus{margin:7px 0 0;padding-left:19px;font-size:12px;color:#55555f;
+  line-height:1.65}
+.pfmeta{display:flex;gap:9px;flex-wrap:wrap;margin-top:8px;font-size:11.5px;
+  color:var(--dim)}
+.pfmeta b{color:var(--ink);font-weight:600}
+.pfact{display:flex;gap:6px;flex-wrap:wrap;margin-top:9px}
+
+/* ---------------- V0.3：库内标签 ---------------- */
+.gchip{font-size:10.5px;padding:1px 7px;border-radius:20px;flex:none;
+  background:#eef7f0;color:#2c6b3f;border:1px solid #cfe8d7;cursor:pointer;
+  white-space:nowrap}
+.gchip:hover{background:#dff0e5}
+.gchip.base{background:#f3eefb;color:#5b3fa8;border-color:#ddd0f0}
+.gchip.low{background:#fff7e8;color:#8a5a0b;border-color:#f0dcae}
+.gchip.manual{background:#e8f4ff;color:#1c5b96;border-color:#c9e0f7}
+.gchip.unknown{background:#f1f1f4;color:#7a7a88;border-color:#e0e0e6}
+.gchip.adult{background:#fdeef4;color:#a3295f;border-color:#f5cede;cursor:default}
+.gchip.mine{background:#fff4e6;color:#96551a;border-color:#f0dcc0}
+.gchip.mine:hover{background:#ffe9cc}
+.gchip.rm{background:#fff4e6;color:#96551a;border-color:#f0dcc0;
+  cursor:pointer;padding-right:5px}
+.gchip.rm:hover{background:#ffdfc0}
+.rmx{font-weight:700;margin-left:3px;opacity:.6}
+.rmx:hover{opacity:1}
+.lblbar{display:flex;align-items:center;gap:6px;flex-wrap:wrap;
+  margin:8px 0 2px;padding-top:8px;border-top:1px dashed var(--line)}
+.lblbar .hint{font-size:11.5px;color:var(--dim)}
+.lblinp{font-size:12px;padding:3px 8px;border:1px solid var(--line);
+  border-radius:6px;width:120px;background:#fff;color:var(--ink)}
+.lblinp:focus{outline:none;border-color:var(--deep)}
+.tgtitle{font-size:11.5px;color:var(--dim);margin-left:auto}
+.libhint{font-size:11.5px;color:var(--deep);min-height:0;padding:0}
+.libhint:not(:empty){padding:6px 2px 0}
+.tagbar{display:flex;align-items:center;gap:7px;flex-wrap:wrap;margin:10px 0 0;
+  padding:9px 11px;background:#fbfbfd;border:1px solid var(--line);border-radius:9px}
+.tagbar .tlab{font-size:12px;color:var(--dim);flex:none}
+.tagstat{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.tagstat .cnt{font-size:11px;color:var(--dim)}
+.organize{margin-top:11px;border:1px solid #cfe0f7;background:#f5f9ff;
+  border-radius:9px;padding:11px 13px;font-size:12.5px}
+.organize h4{margin:0 0 8px;font-size:12.5px;color:#1c5b96;display:flex;
+  align-items:center;gap:7px;flex-wrap:wrap}
+.obucket{display:flex;align-items:center;gap:8px;padding:4px 0;
+  border-bottom:1px dashed #dce9f7}
+.obucket:last-child{border-bottom:0}
+.obucket .od{flex:1;min-width:0;font-weight:600;color:#1c5b96;word-break:break-all}
+.obucket .oc{font-size:11.5px;color:var(--dim);flex:none}
+.oact{display:flex;gap:7px;flex-wrap:wrap;margin-top:10px;padding-top:10px;
+  border-top:1px solid #dce9f7}
+.radio{display:flex;align-items:center;gap:5px;font-size:12px;color:#55555f;
+  cursor:pointer}
+.radio input{margin:0;accent-color:var(--brand)}
+
+/* ============================================================ V0.5.1 三板块
+   验丹炉 / 鉴定台 / 丹房 各是独立子界面：
+   从哪一个地址进来就只渲染哪一个，另外两个连侧栏带正文一律不出现
+   （aside 上挂了 data-sec-only="run"，只有验丹炉用得到那 9 个单元）。 */
+body[data-sec="hist"] .panel[data-sec-only="run"],
+body[data-sec="lib"]  .panel[data-sec-only="run"]{display:none!important}
+
+.sec{animation:secin .18s ease-out}
+@keyframes secin{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+
+/* V0.5.3：板块切换时的骨架。
+
+   为什么要它 —— 用户报的现象是「点板块很慢才出来，给造成三个板块
+   都是一样界面的误会」。光修速度不够：接口在路上的那几百毫秒里，
+   屏幕上要么是空白、要么还挂着旧板块的内容，人一样会以为没换。
+   所以先摆一个「正在加载XX」，等数据到了再撤 —— 让等待**可见**。
+
+   secsk 挂在 .sec 内部第一个位置，绝对定位盖住整块，
+   底下正在画的内容看不见，就不会出现「新旧两层叠在一起」。 */
+.sec{position:relative}
+.secsk{position:absolute;inset:0;z-index:5;display:flex;
+  align-items:center;justify-content:center;gap:11px;flex-direction:column;
+  background:var(--panel,#fff);border-radius:14px;
+  color:var(--dim,#6b7280);font-size:13px;min-height:190px}
+.secsk .skt{letter-spacing:.03em}
+.secsk .skt.err{color:#c0392b;max-width:70%;text-align:center;line-height:1.7}
+.secsk .spin{width:22px;height:22px;border-radius:50%;
+  border:2.5px solid rgba(127,127,160,.22);border-top-color:var(--brand,#4f46e5);
+  animation:secspin .7s linear infinite}
+@keyframes secspin{to{transform:rotate(360deg)}}
+/* 板块正在加载时，侧栏那一格有个微弱的提示（不抢注意力） */
+body[data-secbusy="1"] .navtabs .snlink.on{opacity:.72}
+
+/* 板块头部：左边标题，右边主操作区 —— 「验丹」按钮就落在这儿 */
+.sechead{display:flex;align-items:flex-start;gap:16px;margin-bottom:14px}
+.secinfo{flex:1;min-width:0}
+.secinfo h2{margin:0;font-size:19px;font-weight:700;letter-spacing:.02em}
+.secinfo p{margin:4px 0 0;font-size:12.5px;color:var(--dim)}
+.secact{flex:none;display:flex;gap:9px;align-items:center}
+
+/* 醒目但不过分：主色 + 一点投影，跑起来时置灰 */
+.btn.big{padding:12px 36px;font-size:15px;border-radius:10px;letter-spacing:.06em;
+  box-shadow:0 4px 14px rgba(79,70,229,.28)}
+.btn.big:disabled{box-shadow:none}
+
+/* 就绪检查：没设全就在按钮下面写清「还差什么」，别让用户猜 */
+.readybox:empty{display:none}
+.readybox{margin-bottom:12px;padding:9px 13px;border-radius:9px;font-size:12.5px;
+  border:1px solid #fde68a;background:#fffbeb;color:#92400e}
+.readybox.ok{border-color:#bbf7d0;background:#f0fdf4;color:#166534}
+/* 桌面版暗色：这两条是语义色（黄=缺项、绿=就绪），没有对应主题变量，
+   所以单独写一份暗色值。亮色不受影响。 */
+html[data-hx-theme="dark"] .readybox{border-color:#4f4725;background:#322d19;color:#f2c98a}
+html[data-hx-theme="dark"] .readybox.ok{border-color:#234a31;background:#172c1e;color:#9aebb9}
+.readybox code{background:rgba(0,0,0,.05);padding:1px 5px;border-radius:4px}
+
+/* 板块里的「单元」= 一张卡 */
+.unit{margin-bottom:16px}
+
+/* 鉴定台：左列历史纵跨两行，右上报告、右下投放 */
+.histwrap{display:grid;grid-template-columns:330px minmax(0,1fr);gap:14px;
+  align-items:start}
+.u-hist{grid-row:span 2;margin-bottom:0}
+@media(max-width:1080px){
+  .histwrap{grid-template-columns:1fr}
+  .u-hist{grid-row:auto}
+}
+.rbar{display:flex;gap:8px;align-items:center;margin-bottom:10px;flex-wrap:wrap}
+.rbar .inp{flex:1;min-width:170px}
+.rview{border:1px solid var(--line);border-radius:10px;background:var(--card);
+  overflow:hidden;min-height:220px}
+.repframe{width:100%;height:min(74vh,860px);border:0;display:block;background:var(--card)}
+.dropbox{font-size:13px}
+.drophead{font-size:12.5px;color:var(--dim);margin-bottom:9px;
+  padding-bottom:9px;border-bottom:1px dashed var(--line)}
+.dtag{font-size:11px;color:var(--dim);border:1px solid var(--line);
+  border-radius:5px;padding:0 5px;flex:none}
+.dtip{font-size:12px;color:var(--warn,#b45309)}
+.dgrad{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-top:7px}
+.dgrad .dg{border:1px solid var(--line);background:var(--card);border-radius:7px;
+  padding:3px 10px;font-size:12px;cursor:pointer;font:12px inherit}
+.dgrad .dg:hover{filter:brightness(.97)}
+.dgrad .dg.on{font-weight:600}
+.drow{padding:9px 0;border-bottom:1px dashed var(--line)}
+.drow:last-child{border-bottom:0}
+.drow .dt{display:flex;align-items:center;gap:8px;font-size:13px;flex-wrap:wrap}
+
+/* 品质丹房 / 普通丹房：一格一个丹房 */
+.rooms{display:grid;grid-template-columns:repeat(auto-fill,minmax(242px,1fr));gap:12px}
+.room{border:1px solid var(--line);border-radius:11px;background:var(--card);
+  overflow:hidden;display:flex;flex-direction:column}
+/* --hx-s2 是暗色专用令牌（polish.css 里定义），亮色下不存在 → 回落到 --soft。
+   这种「暗色令牌优先、亮色变量兜底」的写法，一个主题表都不用碰。 */
+.roomhead{display:flex;align-items:center;gap:8px;padding:9px 12px;font-size:13px;
+  font-weight:600;border-bottom:1px solid var(--line);
+  background:var(--hx-s2,var(--soft))}
+.roomhead .dot{width:9px;height:9px;border-radius:50%;flex:none}
+.roomhead .rc{margin-left:auto;font-size:11.5px;font-weight:500;color:var(--dim)}
+.rlist{padding:7px;display:flex;flex-direction:column;gap:5px;
+  max-height:330px;overflow:auto}
+.rlist .empty{padding:16px 0;font-size:12.5px}
+.ritem{display:flex;align-items:center;gap:7px;padding:6px 8px;border-radius:8px;
+  border:1px solid transparent;font-size:12.5px;cursor:pointer;line-height:1.35}
+.ritem:hover{background:var(--hx-s2,var(--soft))}
+.ritem.on{background:var(--hx-s3,var(--soft));border-color:var(--brand)}
+.ritem .rname{flex:1;min-width:0;word-break:break-all}
+.ritem .rsz{font-size:11px;color:var(--dim);flex:none}
+.rfoot{display:flex;gap:7px;padding:8px 10px;border-top:1px dashed var(--line);
+  background:var(--hx-s2,var(--soft));flex-wrap:wrap}
+.rfoot:empty{display:none}
+
+/* 「手动整理」那套折叠区在 V0.5.2 整体搬进了普通丹房，.adv 的样式一并撤掉。 */
+
+/* 小动作按钮的通用底样式。原来只有 `.dgrad .dg` 有规则，丹房 rfoot、
+   收纳盒盒头这些地方的同类按钮其实一直在吃浏览器默认样式（选中时还会
+   露出系统蓝框）。这里补一条公用的，`.dgrad .dg` 优先级更高、依旧覆盖它。 */
+.dg{border:1px solid var(--line);background:var(--card);border-radius:7px;
+  padding:3px 9px;font:12px inherit;color:inherit;cursor:pointer;white-space:nowrap}
+.dg:hover{filter:brightness(.97);border-color:var(--brand)}
+.dg:disabled{opacity:.45;cursor:not-allowed}
+
+/* ================= 普通丹房 · 收纳盒（V0.5.2） =================
+   一盒 = 磁盘上一个真实目录。刻意跟上面的 .rooms（按品质分的丹房）
+   做成两种观感：品质丹房是多列小卡片网格，收纳盒是整宽的分组列表 ——
+   一眼就能看出「这块按品质分、那块按路径分」，这正是用户要的区分。 */
+.boxes{display:flex;flex-direction:column;gap:10px;margin-top:10px}
+.boxes .empty{padding:26px 4px;font-size:12.5px;text-align:center;line-height:1.7}
+.box{border:1px solid var(--line);border-radius:11px;background:var(--card);
+  overflow:hidden}
+.box.over{border-color:var(--brand);
+  box-shadow:inset 0 0 0 2px var(--brand);background:var(--hx-s3,var(--soft))}
+.boxhead{display:flex;align-items:center;gap:8px;padding:9px 12px;font-size:13px;
+  font-weight:600;cursor:pointer;user-select:none;background:var(--hx-s2,var(--soft));
+  border-bottom:1px solid var(--line)}
+.boxhead .tri{width:0;height:0;flex:none;
+  border-left:5px solid var(--dim);border-top:4px solid transparent;
+  border-bottom:4px solid transparent;transition:transform .15s}
+.box.fold .tri{transform:rotate(-90deg)}
+.box.fold .blist{display:none}
+.boxhead .bxtitle{word-break:break-all}
+.boxhead .rc{font-size:11.5px;font-weight:500;color:var(--dim)}
+.boxhead .broot{font-size:11px;font-weight:500;color:var(--dim);
+  border:1px dashed var(--line);border-radius:20px;padding:0 7px}
+.boxhead .bacts{margin-left:auto;display:flex;gap:6px;flex-wrap:wrap}
+.blist{padding:7px;display:flex;flex-direction:column;gap:4px;
+  max-height:340px;overflow:auto}
+.blist .empty{padding:14px 0;font-size:12.5px}
+.bitem{display:flex;align-items:center;gap:6px;flex-wrap:wrap;padding:6px 8px;
+  border-radius:8px;border:1px solid transparent;font-size:12.5px;
+  cursor:pointer;line-height:1.35}
+.bitem:hover{background:var(--hx-s2,var(--soft))}
+.bitem.on{background:var(--hx-s3,var(--soft));border-color:var(--brand)}
+.bitem.dragging{opacity:.4}
+.bitem .bname{max-width:52%;word-break:break-all;padding:0 3px;border-radius:4px}
+.bitem .rsz{font-size:11px;color:var(--dim);flex:none;margin-left:auto}
+.selbar{display:flex;align-items:center;gap:7px;flex-wrap:wrap;margin-top:10px;
+  padding:9px 11px;border:1px dashed var(--line);border-radius:10px;
+  background:var(--hx-s2,var(--soft));min-height:40px}
+.vsep{width:1px;height:16px;background:var(--line);flex:none;margin:0 2px}
+
+/* LoRA 组合单元 */
+.combobox{display:flex;flex-direction:column;gap:9px}
+.combobox .empty{padding:12px 0;font-size:12.5px}
+.cgroup{border:1px solid var(--line);border-radius:10px;
+  background:var(--hx-s2,var(--soft));padding:9px 10px}
+.cghead{display:flex;align-items:center;gap:8px;margin-bottom:7px;font-size:12.5px}
+.cghead .cglab{flex:1;min-width:0;font-weight:600}
+.cghead .cgn{color:var(--dim);font-weight:400}
+.cgrow{display:flex;gap:6px;align-items:center;margin-bottom:6px}
+.cgrow select{flex:1;min-width:0}
+.cgrow .cgw{width:76px;flex:none}
+.cgrow .cgdel{flex:none;padding:4px 9px}
+.cgnote{font-size:11.5px;color:var(--dim);margin-top:3px}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="brand"><i></i>HX验丹炉<span class="ver">V0.5.4</span><span class="by">by HX-会心一姬</span></div>
+  <!-- V0.5.1：三个板块各占一个地址（/run /hist /lib），从哪一个进来就只渲染哪一个。
+       所以这儿是「板块切换」而不是「页内标签」—— 用链接，真跳页。 -->
+  <nav class="navtabs">
+    <a class="snlink" data-tab="run" href="/run" title="测试功能：选 LoRA、配组合、跑强度扫档">验丹炉</a>
+    <a class="snlink" data-tab="hist" href="/hist" title="鉴定台：看报告、查历史、投放丹房">鉴定台</a>
+    <a class="snlink" data-tab="lib" href="/lib" title="丹房：查漏补缺、品质丹房、普通丹房">丹房</a>
+  </nav>
+  <div class="right"><span id="conn" class="conn"><b></b><span>检测中…</span></span></div>
+</header>
+
+<div class="diagwrap"><div id="diag" class="diag" hidden></div></div>
+
+<div class="layout">
+  <!-- V0.5.1：这 9 个单元是「验丹炉」独有的，另外两个板块一律不出现 ——
+       摆在那边既是干扰，也违反「各板块互不出现对方功能界面」。 -->
+  <aside class="panel" data-sec-only="run">
+    <section class="blk">
+      <h3>1 · 测试方案（选 LoRA 类型）</h3>
+      <div id="profBox" class="pfbox">
+        <div class="pfhead">
+          <select id="profSel" class="inp"></select>
+          <span id="profBand" class="pfband"></span>
+        </div>
+        <div id="profDesc" class="pfdesc">加载中…</div>
+        <div id="profHow" class="pfhow" hidden></div>
+        <ul id="profFocus" class="pffocus" hidden></ul>
+        <div class="pfmeta" id="profMeta" hidden></div>
+        <div class="pfact">
+          <button id="profApply" class="btn primary sm">按这个方案设置</button>
+          <button id="profApplyP" class="btn ghost sm">只换提示词</button>
+        </div>
+      </div>
+      <p class="tip">不同类型的 LoRA 合适的强度差一个数量级：功能类 0.2 就该生效，
+        人像/风格类要 0.7 以上才认得出。用同一套档位去测所有类型，
+        结论会全是「崩了」。选个类型，一键把提示词和档位配好。</p>
+    </section>
+
+    <section class="blk">
+      <h3>2 · 固定 LoRA（可选 · 每张图都会带上）</h3>
+      <div class="row">
+        <select id="fixedSel" class="inp"></select>
+        <button id="fixedAdd" class="btn ghost sm">加入</button>
+      </div>
+      <div id="fixedList" class="fixlist"></div>
+      <p class="tip">先搭底座：人物 / 构图 / 质感这类每张都要有的 LoRA 放这里，
+        以固定强度参与，不参与扫档。</p>
+    </section>
+
+    <section class="blk">
+      <h3>3 · 对比 LoRA（可多选，逐个扫强度）</h3>
+      <div id="chips" class="chips"></div>
+      <input id="search" class="inp" placeholder="搜索 LoRA 名称…">
+      <div id="loraList" class="loralist"><div class="empty">加载中…</div></div>
+    </section>
+
+    <section class="blk">
+      <h3>4 · 强度档（作用于对比 LoRA）</h3>
+      <div id="strengthBtns" class="sbtns"></div>
+      <div class="row" style="margin-top:9px">
+        <input id="customS" class="inp" placeholder="自定义档位，如 0.35,0.55">
+        <button id="addS" class="btn ghost sm">加入</button>
+      </div>
+      <p class="tip" id="baseTip">「0 基线」始终会跑，用来判断对比 LoRA 到底改变了什么</p>
+    </section>
+
+    <!-- V0.5.1：第 5 个单元 —— LoRA 组合。
+         和上面「对比 LoRA」的区别：对比 LoRA 是「一个 LoRA 换不同强度逐个扫」，
+         组合是「好几个 LoRA 各自带权重、同时挂在模型链上」出图，
+         和 ComfyUI 里叠好几层权重 LoRA 加载器是一回事。 -->
+    <section class="blk">
+      <h3>5 · LoRA 组合（2 个以上同时上场）</h3>
+      <div id="comboList" class="combobox"></div>
+      <button id="comboAdd" class="btn ghost sm wide">+ 添加一组组合</button>
+      <p class="tip">一组里至少 2 个 LoRA，各自给权重 —— 几个 LoRA 会按顺序
+        串在模型链上同时生效（跟 ComfyUI 里叠几层权重 LoRA 加载器一样）。
+        <br>想验「底模 + 人物 + 风格」这种成套搭配，就在这儿配一组；
+        想单独看出某一个 LoRA 的强弱，用上面的「对比 LoRA」。
+        <br>组合里的 LoRA 如果填了触发词，会自动带上（见下一单元）。</p>
+    </section>
+
+    <section class="blk">
+      <h3>6 · 触发词（可选 · 需要才填）</h3>
+      <div id="triggerList"></div>
+      <p class="tip">不少 LoRA 必须带触发词才生效。填在这里的词会自动加到提示词最前面，
+        只在该 LoRA 参与的那些图里出现；基线不会带上被对比 LoRA 的触发词，
+        这样差异才只来自 LoRA 本身。</p>
+      <div id="trigPreview" class="preview"></div>
+    </section>
+
+    <section class="blk">
+      <h3>7 · 提示词（固定 seed，全部格子相同）</h3>
+      <div class="row">
+        <select id="presetSel" class="inp"></select>
+        <button id="loadP" class="btn ghost sm">载入</button>
+        <button id="saveP" class="btn ghost sm">另存</button>
+      </div>
+      <div id="promptList" style="margin-top:10px"></div>
+      <button id="addP" class="btn ghost sm wide">+ 添加一条提示词</button>
+    </section>
+
+    <!-- V0.5：测试工作流。默认用工具自己搭的那张图（引擎生成），
+         想用自己调好的工作流就选这里；没导出过也不会没有东西可选。 -->
+    <section class="blk">
+      <h3>8 · 测试工作流</h3>
+      <div class="row">
+        <select id="wfSel" class="inp" style="flex:1;min-width:0"></select>
+        <button id="wfReload" class="btn ghost sm" style="flex:none">重扫</button>
+      </div>
+      <p id="wfNote" class="tip"></p>
+      <p class="tip">默认「引擎生成」—— 工具按上面「模型设置」现场搭一张 Krea2 扫档图，
+        什么都不用配，最稳。
+        <br>想用自己调好的：在 ComfyUI 里打开它 → <b>工作流 → 导出（API）</b>，
+        存进 <code>ComfyUI\user\default\workflows\</code>，回来点「重扫」。
+        工具只会改写提示词、尺寸、seed / 步数 / CFG、出图前缀和 LoRA 链，
+        其余节点原样保留。</p>
+    </section>
+
+    <section class="blk">
+      <h3>9 · 生成参数</h3>
+      <div class="grid2">
+        <label>种子<input id="fSeed" class="inp" value="20261002"></label>
+        <label>步数<input id="fSteps" class="inp" value="8"></label>
+        <label>宽<input id="fW" class="inp" value="768"></label>
+        <label>高<input id="fH" class="inp" value="768"></label>
+        <label>CFG<input id="fCfg" class="inp" value="1.0"></label>
+        <label>采样器<input id="fSampler" class="inp" value="euler"></label>
+      </div>
+      <div class="row" style="margin-top:9px">
+        <button id="randSeed" class="btn ghost sm">随机种子</button>
+        <button id="quick768" class="btn ghost sm">768 快扫</button>
+        <button id="quick1024" class="btn ghost sm">1024 高清</button>
+      </div>
+    </section>
+
+    <section class="blk">
+      <details id="modelBox">
+        <summary>
+          <span class="badge" id="modelBadge">检测中</span>
+          <span style="font-size:13px;font-weight:600;color:#33333b">模型设置</span>
+        </summary>
+        <div id="modelFields" class="mf"></div>
+        <div class="mf" style="margin-top:12px;padding-top:12px;border-top:1px solid var(--line)">
+          <label>ComfyUI 根目录（自动启动用它找脚本）
+            <span class="row" style="display:flex;gap:6px">
+              <input id="fComfyRoot" class="inp" placeholder="…\ComfyUI_windows_portable"
+                     style="flex:1">
+              <button id="fScanComfy" class="btn ghost sm" style="flex:none">自动扫描</button>
+            </span></label>
+          <div id="scanBox" class="scanbox hide"></div>
+          <label>启动脚本（留空 = 自动找 run_nvidia_gpu.bat）
+            <input id="fComfyLaunch" class="inp" placeholder="留空即可"></label>
+          <label>loras 目录（留空 = 自动从上面那个根目录找）
+            <input id="fLoraDir" class="inp" placeholder="…\ComfyUI\models\loras"></label>
+          <label class="chk"><input type="checkbox" id="fAutoStart">
+            <span>点「开始测试」时自动启动 ComfyUI</span></label>
+          <label class="chk"><input type="checkbox" id="fAutoStop">
+            <span>跑完自动关闭「由本工具启动的」ComfyUI</span></label>
+        </div>
+        <button id="saveModel" class="btn ghost sm wide" style="margin-top:11px">保存并重载</button>
+        <p id="modelScanHint" class="tip hide"></p>
+        <p class="tip">底模和上家不一样就在这里改选，不用去动 config.json。
+          CLIP 类型通常保持 krea2；换测别的模型时四个都改成你自己的。
+          <br>ComfyUI 路径启动时会自己找 —— 找不到或挑错了，用上面的「自动扫描」。</p>
+
+        <!-- V0.4.3：报错反馈。放在「模型设置」里而不是页脚，因为
+             用户出问题时第一个想到的就是"打开设置看看" —— 路径不对、
+             模型不对、ComfyUI 连不上，这些都在这一块，顺手就把反馈
+             入口放在这儿，不用另找。 -->
+        <div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--line)">
+          <button id="btnReport" class="btn ghost sm wide">出问题？复制报错反馈信息</button>
+          <p class="tip">点了之后整份内容会进剪贴板，直接粘给作者就行 ——
+            里面自带这台机器的环境信息和全部报错记录，不用你再截图。
+            <br>用户名会自动隐去，路径和模型名保留（那是定位问题必需的）。</p>
+          <p id="reportHint" class="tip hide"></p>
+        </div>
+      </details>
+    </section>
+  </aside>
+
+  <main class="stage">
+
+    <!-- ============================================================
+         板块一 · 验丹炉
+         9 个单元全在左侧 aside 里（data-sec-only="run"），
+         这一块只放「运行」这件事：验丹按钮 + 进度 + 结果网格。
+         右上角那个「验丹」按钮是唯一的开跑入口。
+         ============================================================ -->
+    <section id="tab-run" class="sec">
+      <div class="sechead">
+        <div class="secinfo">
+          <h2>验丹炉</h2>
+          <p>左边 9 个单元都设好，点右上角「验丹」开跑。</p>
+        </div>
+        <div class="secact">
+          <button id="start" class="btn primary big">验丹</button>
+        </div>
+      </div>
+
+      <div class="readybox" id="readybox"></div>
+
+      <div class="actions">
+        <button id="stop" class="btn danger" disabled>停止</button>
+        <button id="btnImport" class="btn ghost sm">导入图片</button>
+        <span id="est" class="est"></span>
+      </div>
+
+      <div class="progwrap">
+        <div class="prog"><div id="bar"></div></div>
+        <div id="progtext" class="progtext">空闲中</div>
+      </div>
+
+      <div id="bestbox" class="bestbox hide"></div>
+      <div id="grid"></div>
+      <div id="result" class="result hide"></div>
+    </section>
+
+    <!-- ============================================================
+         板块二 · 鉴定台
+         三个单元：① 鉴定报告（左）② 历史记录（右上）③ 投放丹房（右下）
+         ============================================================ -->
+    <section id="tab-hist" class="sec hide">
+      <div class="sechead">
+        <div class="secinfo">
+          <h2>鉴定台</h2>
+          <p>查阅验丹结果、翻往期记录、把满意的 LoRA 定级投放进丹房。</p>
+        </div>
+      </div>
+
+      <div class="histwrap">
+        <!-- 单元② 历史记录（左列，纵跨两行） -->
+        <section class="blk unit u-hist">
+          <h3>② 历史记录</h3>
+          <div id="hlist" class="hlist"><div class="empty">加载中…</div></div>
+        </section>
+
+        <!-- 单元① 鉴定报告（右上） -->
+        <section class="blk unit u-rep">
+          <h3>① 鉴定报告</h3>
+          <div class="rbar">
+            <select id="repSel" class="inp"></select>
+            <button id="repOpen" class="btn ghost sm">新标签打开</button>
+            <button id="repImg" class="btn ghost sm" disabled>图片文件夹</button>
+            <button id="repDel" class="btn danger sm" disabled>删除报告</button>
+          </div>
+          <div id="repView" class="rview">
+            <div class="empty">左边选一条记录，这里显示它的报告</div>
+          </div>
+        </section>
+
+        <!-- 单元③ 投放丹房（右下） -->
+        <section class="blk unit u-drop">
+          <h3>③ 投放丹房</h3>
+          <div id="dropBox" class="dropbox"></div>
+        </section>
+      </div>
+    </section>
+
+    <!-- ============================================================
+         板块三 · 丹房
+         三个单元：① 查漏补缺 ② 品质丹房 ③ 普通丹房
+         注意：原来「收件箱 + 整理 loras 目录」两块的所有 id 都保留着，
+         只是收件箱并进「查漏补缺」，文件浏览器收进一个折叠区
+         （高级手动操作，平时不用看）。
+         ============================================================ -->
+    <section id="tab-lib" class="sec hide">
+      <div class="sechead">
+        <div class="secinfo">
+          <h2>丹房</h2>
+          <p>把库外的 LoRA 收进来、清掉重复的，再按品质归档管理。</p>
+        </div>
+      </div>
+
+      <!-- 单元① 查漏补缺 -->
+      <section class="blk unit">
+        <h3>① 查漏补缺</h3>
+        <div class="librow">
+          <span class="liblab">监视目录</span>
+          <div id="watchList" class="wlist"></div>
+          <button id="watchAdd" class="btn ghost sm">添加目录</button>
+        </div>
+        <div class="librow">
+          <button id="inboxScan" class="btn ghost sm">扫描库外 LoRA</button>
+          <button id="libDupes" class="btn ghost sm">查重复</button>
+          <span id="inboxMeta" class="libmeta"></span>
+          <label class="chk"><input type="checkbox" id="inboxOnlyLora" checked>
+            只显示判定为 LoRA 的</label>
+        </div>
+        <div id="inboxList" class="inbox">
+          <div class="empty">点「扫描库外 LoRA」开始</div></div>
+        <div class="librow librow-t">
+          <span class="liblab">收到</span>
+          <select id="inboxTarget" class="sel"></select>
+          <button id="inboxMkdir" class="btn ghost sm">新建子目录</button>
+          <button id="inboxMove" class="btn primary sm" disabled>移动选中的</button>
+          <span id="inboxProg" class="libmeta"></span>
+        </div>
+        <div id="libDupeBox" class="dupes hide"></div>
+        <p class="tip">判定依据：读 safetensors 头部的元数据（rank / 底模 / 训练 tag）。
+          底模、VAE、文本编码器没有这些特征，会自动排除。
+          移动后 ComfyUI 下一次请求就会感知到，不用重启 —— 但 ComfyUI 自己的网页
+          下拉框要刷新页面才更新。</p>
+        <p class="tip">这一块只管「把库外的东西收进来」和「找出重复的」。
+          收进来之后怎么摆、怎么归置，都在下面的
+          <b>③ 普通丹房</b>里做。</p>
+      </section>
+
+      <!-- 单元② 品质丹房 -->
+      <section class="blk unit">
+        <h3>② 品质丹房</h3>
+        <div class="rooms" id="gradeRooms"><div class="empty">加载中…</div></div>
+        <p class="tip">四个丹房按品质分：劣品 / 下品 / 中品 / 上品。
+          名字的颜色就是它的品质色。选中任意一个可以直接改等级或删掉 ——
+          <b>把它的品质标签去掉，它就会自动回到下面的「普通丹房」</b>。</p>
+      </section>
+
+      <!-- 单元③ 普通丹房 -->
+      <section class="blk unit">
+        <h3>③ 普通丹房</h3>
+        <p class="tip" style="margin-top:0">这一块跟上面四个品质丹房<b>不是一种东西</b>：
+          品质丹房按「品质」分盒，而这里按 <b>LoRA 在你 ComfyUI 里实际躺的那个文件夹</b>
+          分盒 —— 一格一格就是你磁盘上的目录。所以在这里挪 LoRA
+          是真的在搬文件，搬完 ComfyUI 的目录也跟着变整齐。
+          <b>已经定过级的 LoRA 挪位置时，它的品质标签会跟着一起走，不会掉级。</b></p>
+        <div class="librow">
+          <span id="libRoot" class="libmeta"></span>
+        </div>
+        <div class="librow">
+          <button id="libMkdir" class="btn ghost sm">新建收纳盒</button>
+          <button id="libMoveTo" class="btn ghost sm" disabled>移动到…</button>
+          <button id="libRename" class="btn ghost sm" disabled>重命名</button>
+          <button id="libDel" class="btn danger sm" disabled>删除</button>
+          <span class="vsep"></span>
+          <button id="libTags" class="btn ghost sm">自动打标签</button>
+          <button id="libOrganize" class="btn ghost sm" disabled>按标签一键整理</button>
+          <input id="libSearch" class="inp" placeholder="按文件名筛选" style="margin-left:auto">
+        </div>
+        <div class="librow">
+          <label class="chk"><input type="checkbox" id="plainAll">
+            连已经定级的也一起显示（整理整个库用）</label>
+          <span class="libmeta">把 LoRA 拖到另一个收纳盒上也能搬，一次拖多个也行</span>
+        </div>
+        <div id="libTagBar" class="tagbar hide">
+          <span class="tlab">筛选</span>
+          <div id="libTagStats" class="tagstat"></div>
+          <button id="libTagClear" class="btn ghost sm" style="margin-left:auto">显示全部</button>
+        </div>
+        <div id="libOrganizeBox" class="organize hide"></div>
+        <div id="libHint" class="libhint"></div>
+        <div class="boxes" id="plainBoxes"><div class="empty">加载中…</div></div>
+        <div class="selbar" id="plainSel"><span class="dimtxt">点一个 LoRA 选中它，
+          按住 Ctrl / Shift 可以多选。</span></div>
+        <p class="tip">删除一律走系统回收站，不做不可恢复的删除。
+          正在被 ComfyUI 占用的文件搬不动也删不掉（safetensors 是内存映射加载的），
+          届时会明确告诉你是哪个文件。</p>
+      </section>
+    </section>
+  </main>
+</div>
+
+<div class="modal" id="impModal"><div class="mbox">
+  <div class="mhead"><span>导入图片参与评分（不需要 ComfyUI）</span><x id="impClose">×</x></div>
+  <div class="mbody">
+    <div class="grid2">
+      <label>算进哪一次记录（run）
+        <select id="impRun" class="inp"></select></label>
+      <label>图片所在文件夹
+        <div class="row"><input id="impDir" class="inp" placeholder="默认为 ComfyUI 输出目录">
+          <button id="impScan" class="btn ghost sm">扫描</button></div></label>
+      <label>算作哪个对比 LoRA<select id="impLora" class="inp"></select></label>
+      <label>算作哪条提示词<select id="impPrompt" class="inp"></select></label>
+      <label>算作哪个强度<input id="impStrength" class="inp" value="0.8"></label>
+    </div>
+    <p class="tip" id="impHint">选一个文件夹扫描，挑一张图，再指定它算哪个格子 ——
+      导入后会立刻按同一套口径重算指标、重出报告和大图。</p>
+    <div id="impList" class="imggrid"></div>
+  </div>
+  <div class="mfoot">
+    <span id="impSel" class="dimtxt">未选择图片</span>
+    <button id="impGo" class="btn primary sm" disabled>导入并重算</button>
+  </div>
+</div></div>
+
+<div class="modal" id="mvModal"><div class="mbox" style="width:min(480px,100%)">
+  <div class="mhead"><b>移动到…</b>
+    <button class="btn ghost sm" id="mvCancel">取消</button></div>
+  <div class="mbody">
+    <p class="tip" id="mvInfo" style="margin-top:0"></p>
+    <select id="mvTarget" class="sel" style="width:100%;max-width:none"></select>
+    <div class="row" style="margin-top:8px">
+      <button class="btn ghost sm" id="mvMkdir">在这里面新建一个子文件夹</button>
+    </div>
+    <p class="tip">目标位置已有同名文件时会自动改名，不会覆盖任何东西。
+      已经定过级的 LoRA，品质标签会跟着一起搬。</p>
+  </div>
+  <div class="mfoot"><button class="btn primary sm" id="mvOk">移动</button></div>
+</div></div>
+
+<div class="lightbox" id="lightbox"><img id="lbimg" alt=""></div>
+
+<script>
+const $ = s => document.querySelector(s);
+const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g,
+  c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+/* V0.5.4：拼进 URL 路径段时必须用它，**不能用 esc()**。
+
+   esc() 只做 HTML 转义，不管URL 编码。产物目录名带中文时
+   （run_id 形如 20261008-191656_krea2_JUEHUOGE脸模），
+   未编码的地址浏览器直接请求失败 —— 表现是**小图裂、大图能预览**
+   （大图是 ComfyUI 自己写的相对路径，不经过这里）。
+
+   用它还得再过一遍 esc()：encodeURIComponent 不转义单引号，
+   而这些字符串要塞进 onclick="..." 的属性里。 */
+const urlSeg = s => encodeURIComponent(String(s == null ? '' : s));
+const urlSegHtml = s => esc(urlSeg(s));
+const base = s => String(s).split(/[\\/]/).pop();
+
+/* V0.5：取一行文字。
+   浏览器里就走原生 prompt；Electron 内核**没有实现** window.prompt
+   （调用直接抛错），这时用桌面版注入的 HXPROMPT 弹层顶上。
+   返回字符串；用户取消返回 null —— 和原生 prompt 的约定一致，
+   所以调用处那句 `if (!x) return;` 一个字都不用改。 */
+async function askText(msg, def){
+  const d = def == null ? '' : String(def);
+  if (typeof window.HXPROMPT === 'function'){
+    try { return await window.HXPROMPT(msg, d); } catch (e) { /* 退到原生 */ }
+  }
+  try { return window.prompt(msg, d); } catch (e) { return null; }
+}
+/* 展示用：把路径里的反斜杠换成正斜杠（Windows 上混用很难看），
+   去掉结尾的斜杠。只用于显示，不参与任何查表。 */
+const normPathForDisplay = s =>
+  String(s || '').replace(/\\/g, '/').replace(/\/+$/, '');
+// V0.4.1：相对路径统一正斜杠。后端已经全改成正斜杠了，这里再兜一层，
+// 因为老缓存 / 老服务可能还在发 "子目录\文件.safetensors"。
+// 不归一化的话，文件列表的 rel 和标签表的 rel 对不上号 ——
+// 定级明明存盘了，文件名却不变色、等级筛选也筛不出来。
+const nrel = s => String(s == null ? '' : s).replace(/\\/g, '/').replace(/^\/+|\/+$/g, '');
+const num = v => { const f = parseFloat(v); return isNaN(f) ? 0 : f; };
+function copyText(s){
+  try{
+    if (navigator.clipboard && navigator.clipboard.writeText){
+      navigator.clipboard.writeText(s); return;
+    }
+  }catch(e){}
+  const ta = document.createElement('textarea');
+  ta.value = s; ta.style.position = 'fixed'; ta.style.left = '-9999px';
+  document.body.appendChild(ta); ta.select();
+  try{ document.execCommand('copy'); }catch(e){}
+  ta.remove();
+}
+// 可信到可以直接替用户填的线索；其余只展示、让用户自己点
+const TRUSTED_TRIG = ['civitai', 'json', 'txt', 'dir-txt'];
+const fmtT = s => s == null ? '' : (s < 60 ? Math.round(s) + 's'
+  : Math.floor(s / 60) + 'm' + Math.round(s % 60) + 's');
+
+async function get(u){ const r = await fetch(u); return r.json(); }
+
+/* V0.5.3：哪些 POST 会改变库的内容。
+   这些接口一旦成功，/api/lib/index 的共享缓存就作废了 —— 否则搬完文件
+   再切回丹房，看到的还是搬之前的那份列表（缓存 10 秒内命中）。
+   在 post() 里统一标脏，比在十几个调用点各写一遍可靠：
+   漏一处不会报错，只会让用户觉得「搬了没反应」。
+
+   V0.5.4 校准过一遍：/api/lib/organize（只出计划）与 /api/lib/tag_scan
+   （不写盘）其实是只读的，从名单里去掉 —— 留着会让每次"看整理计划"
+   都把缓存打掉，白白多拉 164KB。
+   反过来补上了 /api/import/move：它把文件搬进 loras 目录，
+   但当初漏了（名字也不叫 lib/*，按前缀扫容易漏掉）。 */
+const LIB_MUTATING = {
+  '/api/lib/move': 1, '/api/lib/delete': 1, '/api/lib/rename': 1,
+  '/api/lib/mkdir': 1, '/api/lib/grade_set': 1, '/api/lib/tag_set': 1,
+  '/api/lib/tag_labels': 1, '/api/lib/organize_run': 1,
+  '/api/import/move': 1, '/api/inbox/move': 1,
+};
+
+async function post(u, b){ const r = await fetch(u, {method:'POST',
+  headers:{'Content-Type':'application/json'}, body: JSON.stringify(b||{})});
+  const j = await r.json();
+  if (LIB_MUTATING[u] && !(j && j.error)) libIndexDirty();
+  return j; }
+
+/* /api/lib/index 的共享缓存。
+
+   V0.5.3 修的坑：进一次丹房要拉**两遍**这个接口 ——
+   renderRooms() 和 renderPlainBoxes() 各自 await 一次，
+   而 libTab() 是串行 await 这两个。加起来 164KB × 2 + 两轮往返，
+   这是「点丹房特别慢」的一半原因（另一半是整页重载）。
+
+   两块数据同源（V0.5.2 定下的分工：一个按品质分、一个按目录分，
+   但都是同一批 rows），所以拉一次就够。
+
+   同时做**并发去重**：两块几乎同时要数据时共用同一个 in-flight promise，
+   不然「去重」只在串行时有效。 */
+let LIBIDX_CACHE = null;       // {data, at}
+let LIBIDX_PEND = null;        // {p, token} in-flight
+let LIBIDX_TOKEN = 0;          // 每次发起请求自增；标脏时也自增
+let LIBIDX_FORCE = false;      // 定级 / 搬文件之后必须重拉（全局作废标记）
+
+function libIndexDirty(){ LIBIDX_FORCE = true; LIBIDX_TOKEN++; }
+
+/* V0.5.4 修的并发 bug：原来 FORCE 既是全局标志又当"本次要不要绕开"用，
+   两者混在一起会漏。
+   现场：搬完文件 post() 标脏 → libIndex() 起请求 P（还没回）
+        → 中途又标脏一次 → 另一个 renderDropBox 调 libIndex()
+   旧写法里 FORCE 为全局 true，于是既没复用 P、又新起一个 Q；
+   而 P 回来后照样无条件写进 CACHE —— **标脏了却仍把作废结果缓存下来**，
+   用户看到的还是搬之前的列表，而且要等 10 秒才自然过期。
+
+   现在用 token 判定：只有"当前这一发请求"没有被后来的标脏作废，
+   才允许写进 CACHE。 */
+function libIndex(force){
+  const bypass = force || LIBIDX_FORCE;
+  if (bypass) libIndexDirty();
+  if (LIBIDX_PEND && !bypass) return LIBIDX_PEND.p;
+  if (LIBIDX_CACHE && !bypass
+      && Date.now() - LIBIDX_CACHE.at < 10000){
+    // 10 秒内的结果直接复用：切回来快一点，
+    // 又不至于在别处搬完文件后还拿旧数据。
+    return Promise.resolve(LIBIDX_CACHE.data);
+  }
+  LIBIDX_FORCE = false;
+  const myToken = ++LIBIDX_TOKEN;
+  const p = get('/api/lib/index').then(function(gi){
+    // 回来的路上又被标脏过（token 变了）→ 这一发已作废，不许进缓存
+    if (myToken === LIBIDX_TOKEN) LIBIDX_CACHE = {data: gi, at: Date.now()};
+    if (LIBIDX_PEND && LIBIDX_PEND.p === p) LIBIDX_PEND = null;
+    return gi;
+  }).catch(function(e){
+    if (LIBIDX_PEND && LIBIDX_PEND.p === p) LIBIDX_PEND = null;
+    throw e;
+  });
+  LIBIDX_PEND = {p: p, token: myToken};
+  return p;
+}
+
+const S = {
+  boot: null,
+  loras: new Set(),
+  fixed: [],
+  triggers: {},
+  strengths: [0.4, 0.6, 0.8, 1.0, 1.2],
+  active: new Set([0.4, 0.6, 0.8, 1.0, 1.2]),
+  prompts: [],
+  timer: null,
+  job: null,
+  lastRun: null,
+  profile: '',            // V0.3：当前选中的测试方案 id
+  // V0.5.1：第 5 单元「LoRA 组合」。
+  // [{items:[{name, strength}], label}]，一组 ≥2 个 LoRA，各自带权重。
+  combos: [],
+};
+
+/* ---------------------------------------------- V0.3：测试方案（按类型测） */
+function profileList(){
+  return (S.boot && S.boot.profiles && S.boot.profiles.profiles) || [];
+}
+function curProfile(){
+  return profileList().find(p => p.id === S.profile) || null;
+}
+
+function renderProfileBox(){
+  const sel = $('#profSel');
+  const box = $('#profBox');
+  const groups = (S.boot && S.boot.profiles && S.boot.profiles.groups) || [];
+  const list = profileList();
+  if (!list.length){
+    sel.innerHTML = '<option>（没有方案数据）</option>';
+    $('#profDesc').textContent = '后端没返回测试方案，请确认 profiles_data.py 在工具目录里。';
+    return;
+  }
+  // 分组显示：最常用的四类放最上面，其余按用途分组
+  let html = '';
+  groups.forEach(g => {
+    const items = g.ids.map(id => list.find(p => p.id === id)).filter(Boolean);
+    if (!items.length) return;
+    html += `<optgroup label="${esc(g.title)}">`
+      + items.map(p => `<option value="${esc(p.id)}">${esc(p.name)}</option>`).join('')
+      + '</optgroup>';
+  });
+  // 没被分到任何组里的也要露出来，别让方案悄悄消失
+  const grouped = new Set(groups.flatMap(g => g.ids));
+  const rest = list.filter(p => !grouped.has(p.id));
+  if (rest.length){
+    html += '<optgroup label="其他">'
+      + rest.map(p => `<option value="${esc(p.id)}">${esc(p.name)}</option>`).join('')
+      + '</optgroup>';
+  }
+  sel.innerHTML = html;
+  if (!S.profile) S.profile = list[0].id;
+  sel.value = S.profile;
+  sel.onchange = () => { S.profile = sel.value; renderProfileBox(); };
+  renderProfileDetail();
+}
+
+function renderProfileDetail(){
+  const p = curProfile();
+  const box = $('#profBox');
+  if (!p) return;
+  box.classList.add('on');
+  $('#profBand').textContent = '建议档 ' + p.band;
+  $('#profDesc').innerHTML = '<b>' + esc(p.cat) + '</b> · ' + esc(p.summary);
+
+  const how = $('#profHow');
+  how.hidden = false;
+  how.innerHTML = '<b>怎么测：</b>' + esc(p.how);
+
+  const f = $('#profFocus');
+  f.hidden = false;
+  f.innerHTML = p.focus.map(x => '<li>' + esc(x) + '</li>').join('');
+
+  $('#profMeta').hidden = false;
+  $('#profMeta').innerHTML =
+    `<span>提示词 <b>${p.prompts.length}</b> 条</span>`
+    + `<span>画幅 <b>${esc(p.size)}</b></span>`
+    + `<span>步数 <b>${p.steps}</b></span>`;
+}
+
+/* ---------------------------------------- V0.5：测试工作流（内置 / 本地）
+ * 后端在启动数据里就把清单下发了（S.boot.workflows），所以这里只管画。
+ * 选项的值统一编码成 "engine" 或文件全路径 —— 提交时原样给后端，
+ * 由后端去白名单校验，前端不做路径判断（前端判断挡不住人）。
+ */
+function wfList(){
+  return (S.boot && S.boot.workflows) || {bundled: [], local: [], dirs: []};
+}
+
+function curWorkflow(){
+  const sel = $('#wfSel');
+  const v = sel && sel.value;
+  if (!v || v === 'engine') return {kind: 'engine', path: ''};
+  return {kind: 'file', path: v};
+}
+
+function renderWorkflows(){
+  const sel = $('#wfSel');
+  if (!sel) return;
+  const w = wfList();
+  const keep = sel.value;
+  let html = '';
+  const bundled = w.bundled || [];
+  if (bundled.length){
+    // 注意：这些字符串都是一行拼出来的 —— 反引号模板里换行会把
+    // 缩进带进 value="" 里，选中的值就跟后端对不上了
+    html += '<optgroup label="内置（随工具自带）">'
+      + bundled.map(x => '<option value="'
+          + esc(x.kind === 'engine' ? 'engine' : x.path) + '">'
+          + esc(x.name) + '</option>').join('')
+      + '</optgroup>';
+  }
+  const local = w.local || [];
+  if (local.length){
+    html += '<optgroup label="我的工作流">'
+      + local.map(x => '<option value="' + esc(x.path) + '">' + esc(x.name)
+          + (x.bad ? '（界面格式，会自动转换）' : '') + '</option>').join('')
+      + '</optgroup>';
+  }
+  if (!html) html = '<option value="engine">引擎生成</option>';
+  sel.innerHTML = html;
+  // 用 value 逐个比，别拼 CSS 选择器 —— 路径里有引号或反斜杠就会崩
+  let found = false;
+  for (const o of sel.options) if (o.value === keep){ found = true; break; }
+  sel.value = found ? keep : 'engine';
+  sel.onchange = renderWorkflowNote;
+  renderWorkflowNote();
+}
+
+function renderWorkflowNote(){
+  const box = $('#wfNote');
+  if (!box) return;
+  const v = $('#wfSel').value;
+  const w = wfList();
+  const all = (w.bundled || []).concat(w.local || []);
+  const it = all.find(x => (x.kind === 'engine' && v === 'engine') || x.path === v);
+  const bits = [];
+  if (it && it.note) bits.push(esc(it.note));
+  if (v && v !== 'engine' && it && it.format === 'ui'){
+    bits.push('这是 ComfyUI 的界面格式导出，工具会自动转成 API 格式（查过 ComfyUI '
+      + '自己的节点表，控件名和顺序是对得上的）。若转不出来，点「开始测试」时会'
+      + '当场告诉你，并建议你改用「导出（API）」。');
+  }
+  if (!(w.dirs || []).length){
+    bits.push('没找到你的工作流目录 —— 在「模型设置」里填好 ComfyUI 根目录后点「重扫」。');
+  }
+  box.innerHTML = bits.join('<br>');
+}
+
+if ($('#wfReload')) $('#wfReload').onclick = async () => {
+  const btn = $('#wfReload');
+  btn.disabled = true; btn.textContent = '扫描中…';
+  try {
+    const r = await get('/api/workflows');
+    if (r && !r.error) S.boot.workflows = r;
+    else if (r && r.error) alert('扫描工作流失败：' + r.error);
+    renderWorkflows();
+  } catch (e){
+    alert('扫描工作流失败：' + e.message);
+  }
+  btn.disabled = false; btn.textContent = '重扫';
+};
+
+/* 把选中方案的提示词 + 强度档 + 画幅一次性套到当前设置上。
+   withStrength=false 时只换提示词（用户已经手动调过档位时用）。 */
+function applyProfile(withStrength){
+  const p = curProfile();
+  if (!p) return;
+  if (withStrength){
+    S.strengths = p.strengths.slice();
+    S.active = new Set(p.strengths);
+    renderStrengths();
+    // size 形如 '1024 x 1024'，带空格 —— 必须 trim + parseInt，
+    // 否则 split 出来是 '1024 '，写进 input 会让宽高变成非数字，出图直接失败
+    const wh = String(p.size).toLowerCase().split('x').map(x => parseInt(x, 10));
+    if (wh[0] > 0 && wh[1] > 0){ $('#fW').value = wh[0]; $('#fH').value = wh[1]; }
+    $('#fSteps').value = p.steps;
+  }
+  S.prompts = p.prompts.map(x => ({label: x.label, text: x.text}));
+  renderPrompts();
+  updateEst();
+  updateTrigPreview();
+  const box = $('#profHow');
+  box.hidden = false;
+  const tip = document.createElement('div');
+  tip.className = 'pfmeta';
+  tip.innerHTML = `<span style="color:var(--ok)">✓ 已套用：${p.prompts.length} 条提示词`
+    + (withStrength ? `、${p.strengths.length} 个强度档` : '（档位未改）')
+    + `、${esc(p.size)}</span>`;
+  box.appendChild(tip);
+  setTimeout(() => tip.remove(), 6000);
+}
+
+/* --------------------------------------------------------- 固定 LoRA */
+function renderFixedOptions(){
+  const sel = $('#fixedSel');
+  const groups = S.boot.lora_groups || {};
+  const keep = sel.value;
+  let html = '<option value="">选择要固定的 LoRA…</option>';
+  Object.keys(groups).forEach(g => {
+    html += `<optgroup label="${esc(g)}">`
+      + groups[g].map(n => `<option value="${esc(n)}">${esc(base(n))}</option>`).join('')
+      + '</optgroup>';
+  });
+  sel.innerHTML = html;
+  sel.value = keep;
+  syncFixedOptions();
+}
+
+function syncFixedOptions(){
+  const sel = $('#fixedSel');
+  const on = new Set(S.fixed.map(f => f.name));
+  [...sel.options].forEach(o => {
+    if (!o.value) return;
+    const hit = on.has(o.value);
+    o.disabled = hit;
+    o.textContent = base(o.value) + (hit ? '  ✓ 已固定' : '');
+  });
+}
+
+function renderFixed(){
+  const box = $('#fixedList');
+  box.innerHTML = '';
+  if (!S.fixed.length){
+    const d = document.createElement('div');
+    d.className = 'fixnone';
+    d.textContent = '未设置 —— 基线 = 完全不加载 LoRA';
+    box.appendChild(d);
+  } else {
+    S.fixed.forEach((fx, i) => {
+      const row = document.createElement('div');
+      row.className = 'fitem';
+      row.innerHTML = `<span class="nm" title="${esc(fx.name)}">${esc(base(fx.name))}</span>`
+        + `<input type="number" step="0.05" min="0" max="2" value="${fx.strength}">`
+        + `<x title="移出固定列表">×</x>`;
+      row.querySelector('input').oninput = e => {
+        const v = parseFloat(e.target.value);
+        if (!isNaN(v) && v >= 0) { S.fixed[i].strength = v; updateEst(); }
+      };
+      row.querySelector('x').onclick = () => {
+        S.fixed.splice(i, 1);
+        renderFixed(); syncFixedOptions(); renderBaseTip(); updateEst();
+      };
+      box.appendChild(row);
+    });
+  }
+  renderBaseTip();
+  renderTriggers();
+}
+
+function renderBaseTip(){
+  const n = S.fixed.length;
+  $('#baseTip').textContent = n
+    ? `「0 基线」始终会跑 —— 有固定 LoRA 时，基线 = 只加载这 ${n} 个固定 LoRA、`
+      + `不加载被对比的 LoRA，所以差异只来自对比对象`
+    : '「0 基线」始终会跑 —— 未设置固定 LoRA 时，基线 = 完全不加载 LoRA，'
+      + '用于判断对比 LoRA 到底改变了什么';
+}
+
+/* ---------------------------------------------------------- LoRA 列表 */
+function renderLoras(){
+  const q = ($('#search').value || '').trim().toLowerCase();
+  const groups = S.boot.lora_groups || {};
+  const box = $('#loraList');
+  box.innerHTML = '';
+  let shown = 0;
+  Object.keys(groups).forEach(g => {
+    const items = groups[g].filter(n => !q || n.toLowerCase().includes(q));
+    if (!items.length) return;
+    shown += items.length;
+    const head = document.createElement('div');
+    head.className = 'lgroup';
+    const on = items.filter(n => S.loras.has(n)).length;
+    head.innerHTML = `<span>${esc(g)}</span><i>${on ? on + '/' : ''}${items.length}</i>`;
+    const body = document.createElement('div');
+    body.className = 'lbody';
+    body.style.display = q ? 'block' : 'none';
+    items.forEach(n => {
+      const row = document.createElement('label');
+      const isFix = S.fixed.some(f => f.name === n);
+      row.className = 'litem' + (S.loras.has(n) ? ' on' : '') + (isFix ? ' isfixed' : '');
+      row.innerHTML = `<input type="checkbox" ${S.loras.has(n) ? 'checked' : ''}>`
+        + `<span title="${esc(n)}">${esc(base(n))}</span>`
+        + (isFix ? '<i class="fixtag">已固定</i>' : '');
+      row.querySelector('input').onchange = e => {
+        if (e.target.checked && isFix){
+          e.target.checked = false;
+          alert('「' + base(n) + '」已经在固定 LoRA 列表里了。\n'
+            + '同一个 LoRA 不能既固定又参与扫档，请先从固定列表移出。');
+          return;
+        }
+        if (e.target.checked) S.loras.add(n); else S.loras.delete(n);
+        row.classList.toggle('on', e.target.checked);
+        head.querySelector('i').textContent =
+          (items.filter(x => S.loras.has(x)).length || '') +
+          (items.filter(x => S.loras.has(x)).length ? '/' : '') + items.length;
+        renderChips(); updateEst();
+      };
+      body.appendChild(row);
+    });
+    head.onclick = () => {
+      body.style.display = body.style.display === 'none' ? 'block' : 'none';
+    };
+    box.appendChild(head); box.appendChild(body);
+  });
+  if (!shown) box.innerHTML = (S.boot && S.boot.comfy_alive === false)
+    ? '<div class="empty">ComfyUI 没在运行，读不到 LoRA 列表。<br>'
+      + '把它启动起来后这里会自动出现。</div>'
+    : '<div class="empty">没有匹配的 LoRA</div>';
+}
+
+function renderChips(){
+  const c = $('#chips');
+  c.innerHTML = '';
+  [...S.loras].forEach(n => {
+    const d = document.createElement('span');
+    d.className = 'chip';
+    d.innerHTML = `${esc(base(n))}<x title="移除">×</x>`;
+    d.querySelector('x').onclick = () => { S.loras.delete(n); renderLoras();
+      renderChips(); updateEst(); };
+    c.appendChild(d);
+  });
+  renderTriggers();
+}
+
+/* ------------------------------------------------------------ 触发词 */
+// 需要触发词的 LoRA 出现对应的输入框：固定组在前、对比组在后
+function triggerTargets(){
+  const out = S.fixed.map(f => ({name: f.name, kind: '固定'}));
+  [...S.loras].forEach(n => {
+    if (!S.fixed.some(f => f.name === n)) out.push({name: n, kind: '对比'});
+  });
+  return out;
+}
+
+let _trigSig = null;
+function renderTriggers(force){
+  const box = $('#triggerList');
+  const list = triggerTargets();
+  const sig = list.map(t => t.name).join('|');
+  if (!force && sig === _trigSig){ updateTrigPreview(); return; }
+  _trigSig = sig;
+  // 已经不在列表里的 LoRA，触发词也一并清掉，免得残留着偷偷生效
+  const keep = new Set(list.map(t => t.name));
+  Object.keys(S.triggers).forEach(k => { if (!keep.has(k)) delete S.triggers[k]; });
+  box.className = list.length ? 'triglist' : '';
+  box.innerHTML = '';
+  if (!list.length){
+    box.innerHTML = '<div class="trigempty">先在上面选好固定 / 对比 LoRA，这里才会出现对应的输入框</div>';
+    updateTrigPreview();
+    return;
+  }
+  list.forEach(t => {
+    const row = document.createElement('div');
+    row.className = 'trigrow';
+    row.innerHTML = `<span class="nm" title="${esc(t.name)}">${esc(base(t.name))}`
+      + `<em class="${t.kind === '固定' ? 'fx' : ''}">${t.kind}</em></span>`
+      + `<input placeholder="触发词，留空 = 不带" value="${esc(S.triggers[t.name] || '')}">`;
+    row.querySelector('input').oninput = e => {
+      const v = e.target.value.trim();
+      if (v) S.triggers[t.name] = v; else delete S.triggers[t.name];
+      const h = row.querySelector('.tsrc');
+      if (h && !v){ h.remove(); }
+      updateTrigPreview();
+    };
+    box.appendChild(row);
+    findTrigger(t, row);
+  });
+  updateTrigPreview();
+}
+
+// 忘了触发词？在本地找线索：随文件下载的信息 > 同名 json/txt > 训练 tag > 文件名
+async function findTrigger(t, row){
+  const r = await get('/api/lora/trigger?name=' + encodeURIComponent(t.name));
+  if (!r || r.error || S.triggers[t.name]) return;
+  const cands = r.cands || [];
+  if (!cands.length) return;
+  const best = cands[0];
+  const input = row.querySelector('input');
+  const hint = document.createElement('span');
+
+  if (TRUSTED_TRIG.indexOf(best.src) >= 0){
+    S.triggers[t.name] = best.text;
+    if (input) input.value = best.text;
+    hint.className = 'tsrc ok';
+    hint.textContent = '已自动填入 · ' + best.label;
+  } else {
+    hint.className = 'tsrc ask';
+    hint.innerHTML = '可能是：<a href="javascript:void 0">'
+      + esc(best.text) + '</a>（' + esc(best.label) + '）';
+    hint.querySelector('a').onclick = () => {
+      S.triggers[t.name] = best.text;
+      if (input) input.value = best.text;
+      hint.className = 'tsrc ok';
+      hint.textContent = '已填入 · ' + best.label;
+      updateTrigPreview();
+    };
+  }
+  row.appendChild(hint);
+  updateTrigPreview();
+}
+
+// 预览：以第一个对比 LoRA 为例，说明最终真正投喂给模型的文本长什么样
+function composePreview(){
+  const parts = [];
+  S.fixed.forEach(f => {
+    const t = S.triggers[f.name];
+    if (t && !parts.includes(t)) parts.push(t);
+  });
+  const first = [...S.loras][0];
+  if (first){
+    const t = S.triggers[first];
+    if (t && !parts.includes(t)) parts.push(t);
+  }
+  const p = S.prompts.find(x => x.text.trim());
+  const body = p ? p.text.trim().replace(/\s+/g, ' ') : '（还没填提示词）';
+  parts.push(body.slice(0, 140) + (body.length > 140 ? ' …' : ''));
+  return parts.join(', ');
+}
+
+function updateTrigPreview(){
+  const el = $('#trigPreview');
+  if (!el) return;
+  const first = [...S.loras][0];
+  const who = first ? `以「${base(first)}」为例`
+    : (S.fixed.length ? '以固定组为例' : '以当前设置为例');
+  el.innerHTML = `<b>最终投喂预览（${esc(who)}）：</b><br>` + esc(composePreview());
+}
+
+/* ------------------------------------------------------------ 强度档 */
+let _strTimer = null;
+function saveStrengths(){
+  // 档位增删后写回 config.json；否则下次打开又变回默认档
+  clearTimeout(_strTimer);
+  _strTimer = setTimeout(() => {
+    post('/api/strengths', {strengths: S.strengths.slice().sort((a, b) => a - b)});
+  }, 400);
+}
+
+function renderStrengths(){
+  const box = $('#strengthBtns');
+  box.innerHTML = '';
+  const zero = document.createElement('button');
+  zero.className = 'sb fixed'; zero.textContent = '0 基线';
+  zero.title = '基线档（无 LoRA）始终会跑，不可删除';
+  box.appendChild(zero);
+  S.strengths.slice().sort((a, b) => a - b).forEach(v => {
+    const node = document.createElement('button');
+    node.className = 'sb' + (S.active.has(v) ? ' on' : '');
+    node.title = '点数字开关该档 · 点 × 从列表里删掉';
+    const lab = document.createElement('span');
+    lab.textContent = v;
+    node.appendChild(lab);
+    const del = document.createElement('x');
+    del.textContent = '×';
+    del.title = '删除该档位';
+    del.onclick = ev => {
+      ev.stopPropagation();               // 别触发外层的「开关」切换
+      S.strengths = S.strengths.filter(x => x !== v);
+      S.active.delete(v);
+      renderStrengths(); updateEst(); saveStrengths();
+    };
+    node.appendChild(del);
+    node.onclick = () => {
+      if (S.active.has(v)) S.active.delete(v); else S.active.add(v);
+      renderStrengths(); updateEst();
+    };
+    box.appendChild(node);
+  });
+}
+
+/* ------------------------------------------------------------ 提示词 */
+function renderPrompts(){
+  const box = $('#promptList');
+  box.innerHTML = '';
+  S.prompts.forEach((p, i) => {
+    const d = document.createElement('div');
+    d.className = 'pblock';
+    d.innerHTML = `<div class="row"><input class="inp plabel" placeholder="标签，如 人像" value="${esc(p.label)}">`
+      + `<button class="btn ghost sm del">删除</button></div>`
+      + `<textarea class="inp ptext" rows="4" placeholder="英文自然语言提示词…"
+         style="margin-top:7px">${esc(p.text)}</textarea>`;
+    d.querySelector('.plabel').oninput = e => { S.prompts[i].label = e.target.value; };
+    d.querySelector('.ptext').oninput = e => { S.prompts[i].text = e.target.value;
+      updateEst(); updateTrigPreview(); };
+    d.querySelector('.del').onclick = () => {
+      if (S.prompts.length <= 1) { alert('至少保留一条提示词'); return; }
+      S.prompts.splice(i, 1); renderPrompts(); updateEst();
+    };
+    box.appendChild(d);
+  });
+  updateTrigPreview();
+}
+
+/* -------------------------------------------------- 5 · LoRA 组合单元
+   和「对比 LoRA」的区别：
+     对比 LoRA = 一个 LoRA 换不同强度逐个扫（看单体的强弱曲线）
+     组合     = 好几个 LoRA 各自带权重同时挂在模型链上（看成套搭配成不成）
+   落到工作流上，组合就是按顺序串好几层 LoRA 加载器 —— 跟你在 ComfyUI
+   里手动叠几层权重 LoRA 是一回事（后端 build_workflow / patch_workflow 那段）。 */
+function allLoraNames(){
+  const b = S.boot || {};
+  if (Array.isArray(b.loras) && b.loras.length) return b.loras.slice();
+  const g = b.lora_groups || {};
+  return Object.keys(g).reduce((a, k) => a.concat(g[k]), []);
+}
+
+function comboOptsHTML(cur){
+  const names = allLoraNames();
+  const seen = names.includes(cur);
+  return '<option value="">— 选 LoRA —</option>'
+    + ((cur && !seen)
+        ? `<option value="${esc(cur)}" selected>${esc(base(cur))}（不在当前库里）</option>` : '')
+    + names.map(n => `<option value="${esc(n)}"${n === cur ? ' selected' : ''}>`
+        + `${esc(n)}</option>`).join('');
+}
+
+function renderCombos(){
+  const box = $('#comboList');
+  if (!box) return;
+  if (!S.combos.length){
+    box.innerHTML = '<div class="empty">还没配组合。点下面按钮加一组，'
+      + '比如「底模 + 人物 + 风格」这种成套搭配。</div>';
+    updateEst();
+    return;
+  }
+  box.innerHTML = S.combos.map((c, gi) => {
+    const items = c.items || [];
+    const rows = items.map((it, ri) => `
+      <div class="cgrow">
+        <select class="inp" data-g="${gi}" data-r="${ri}" data-k="name">
+          ${comboOptsHTML(it.name)}</select>
+        <input class="inp cgw" type="number" step="0.05" min="0" max="2"
+               value="${it.strength == null ? 1 : it.strength}"
+               data-g="${gi}" data-r="${ri}" data-k="strength"
+               title="这一层 LoRA 的权重">
+        <button class="btn ghost sm cgdel" data-del-r="${gi}:${ri}"
+                title="去掉这一层">×</button>
+      </div>`).join('');
+    const n = items.filter(i => i && i.name).length;
+    const tip = n >= 2 ? `（${n} 层）` : `（还差 ${2 - n} 层才成立）`;
+    return `<div class="cgroup" data-g="${gi}">
+      <div class="cghead">
+        <span class="cglab">组合 ${String.fromCharCode(65 + gi)}</span>
+        <span class="cgn">${tip}</span>
+        <button class="btn ghost sm" data-del-g="${gi}">删除这组</button>
+      </div>
+      ${rows}
+      <button class="btn ghost sm wide" data-add-r="${gi}">+ 加一个 LoRA</button>
+    </div>`;
+  }).join('');
+
+  box.querySelectorAll('[data-add-r]').forEach(b => b.onclick = () => {
+    S.combos[+b.dataset.addR].items.push({name: '', strength: 1.0});
+    renderCombos();
+  });
+  box.querySelectorAll('[data-del-r]').forEach(b => b.onclick = () => {
+    const p = b.dataset.delR.split(':');
+    S.combos[+p[0]].items.splice(+p[1], 1);
+    renderCombos();
+  });
+  box.querySelectorAll('[data-del-g]').forEach(b => b.onclick = () => {
+    S.combos.splice(+b.dataset.delG, 1);
+    renderCombos();
+  });
+  box.querySelectorAll('select[data-k="name"]').forEach(sel => sel.onchange = () => {
+    S.combos[+sel.dataset.g].items[+sel.dataset.r].name = sel.value;
+    renderCombos();                    // 重画一次，「还差几层」才准
+  });
+  box.querySelectorAll('input[data-k="strength"]').forEach(inp => inp.onchange = () => {
+    const v = parseFloat(inp.value);
+    S.combos[+inp.dataset.g].items[+inp.dataset.r].strength = isNaN(v) ? 1.0 : v;
+    updateEst();
+  });
+  updateEst();
+}
+
+function renderPresets(){
+  const sel = $('#presetSel');
+  const list = (S.boot.presets || []);
+  sel.innerHTML = list.length
+    ? list.map((p, i) => `<option value="${i}">${esc(p.name)}</option>`).join('')
+    : '<option value="">（还没有预设）</option>';
+}
+
+/* -------------------------------------------------------------- 预估 */
+function updateEst(){
+  const nL = S.loras.size;
+  const nF = S.fixed.length;
+  const nC = comboValid(S.combos).length;
+  const nP = S.prompts.filter(p => p.text.trim()).length;
+  const nS = S.strengths.filter(v => S.active.has(v)).length;
+  // 基线只出一轮（所有组共用），所以是 nP 而不是 nL*nP。
+  // 组合组没有强度轴，一组只多一排（nP 张）。
+  const n = nP + nL * nP * nS + nC * nP;
+  const px = (num($('#fW').value) * num($('#fH').value)) || 768 * 768;
+  const per = 40 * px / (768 * 768);
+  const ready = (nL || nC) && nP && (nC || nS);
+  $('#est').textContent = ready
+    ? `共 ${n} 张 · 约 ${Math.ceil(n * per / 60)} 分钟`
+      + (nF ? ` · 固定 ${nF} 个` : '') + (nC ? ` · 组合 ${nC} 组` : '')
+    : '请选择对比 LoRA / 提示词 / 强度档';
+  renderReady();
+}
+
+/* ---------------------------------------------------------- 就绪检查
+   9 个单元里哪几个是「必须有」：
+     3 对比 LoRA 与 5 LoRA 组合 —— 二者至少有一个
+     7 提示词
+     4 强度档（只在选了对比 LoRA 时才需要，纯跑组合用不上）
+   其余（测试方案 / 固定 LoRA / 触发词 / 工作流 / 生成参数）都能走默认值。
+   结果写在「验丹」按钮下面那一条，明确说还差什么 —— 不让人对着灰按钮猜。 */
+function comboValid(list){
+  return (list || []).filter(c =>
+    c && (c.items || []).filter(i => i && i.name).length >= 2);
+}
+
+function countPlan(){
+  const nP = S.prompts.filter(p => p.text.trim()).length;
+  const nS = S.strengths.filter(v => S.active.has(v)).length;
+  return nP + S.loras.size * nP * nS + comboValid(S.combos).length * nP;
+}
+
+function readyIssues(){
+  const out = [];
+  const nzS = S.strengths.filter(v => S.active.has(v));
+  const nP = S.prompts.filter(p => p.text.trim()).length;
+  const nC = comboValid(S.combos).length;
+  if (!S.loras.size && !nC)
+    out.push('第 3 单元选至少一个对比 LoRA，或第 5 单元配一组 LoRA 组合');
+  if (S.loras.size && !nzS.length) out.push('第 4 单元至少勾一个非 0 的强度档');
+  if (!nP) out.push('第 7 单元填一条提示词');
+  const fl = (S.boot && S.boot.flags) || {};
+  const offline = !!(S.boot && S.boot.comfy_alive === false);
+  if (offline && !fl.comfy_autostart)
+    out.push('ComfyUI 没在运行 —— 去「模型设置」勾上「点开始测试时自动启动」');
+  return out;
+}
+
+function renderReady(){
+  const box = $('#readybox');
+  if (!box) return;
+  const iss = readyIssues();
+  if (!iss.length){
+    box.className = 'readybox ok';
+    box.innerHTML = '就绪 —— 预计出 <b>' + countPlan()
+      + '</b> 张，点右上角「验丹」开跑。';
+    return;
+  }
+  box.className = 'readybox';
+  box.innerHTML = '还差这些才能开跑：<br>· ' + iss.map(esc).join('<br>· ');
+}
+
+/* ------------------------------------------------------------ 运行态 */
+function renderJob(j){
+  S.job = j;
+  if (j.status === 'idle'){
+    $('#progtext').textContent = '空闲中 —— 左边 9 个单元设好，点右上角「验丹」';
+    return;
+  }
+  const pct = j.total ? Math.round(j.done / j.total * 100) : 0;
+  $('#bar').style.width = pct + '%';
+  const st = {running:'运行中', done:'已完成', stopped:'已停止', error:'出错'}[j.status] || j.status;
+  $('#progtext').textContent = `${st} · ${j.phase || ''} · ${j.message || ''}`
+    + ` · ${j.done}/${j.total} · 已用 ${fmtT(j.elapsed)}`;
+  $('#start').disabled = j.status === 'running';
+  $('#stop').disabled = j.status !== 'running';
+  $('#bestbox').classList.add('hide');
+  renderGrid(j);
+  if (j.status === 'done' || j.status === 'stopped' || j.status === 'error'){
+    finishUI(j);
+  }
+}
+
+function renderGrid(j){
+  const spec = j.spec || {};
+  const loras = spec.loras || [];
+  const prompts = spec.prompts || [];
+  const ss = (spec.strengths || []).map(num).sort((a, b) => a - b);
+  const cols = ss.includes(0) ? ss : [0].concat(ss);
+  const map = {};
+  (j.cells || []).forEach(c => {
+    map[num(c.lora_i) + '_' + num(c.prompt_i) + '_' + num(c.strength)] = c;
+  });
+
+  const out = [];
+  loras.forEach((lora, li) => {
+    const head = `<div class="lhead">${esc(base(lora))}`;
+    const best = (j.best || {})[base(lora).replace(/\.[^.]+$/, '')];
+    out.push('<div class="lsec">');
+    let h = '<div class="lhead">' + esc(base(lora));
+    if (best != null) h += `<span class="badge">推荐强度 ${best}</span>`;
+    h += '</div>';
+    out.push(h);
+
+    out.push('<table class="mgrid"><tr><th></th>');
+    cols.forEach(s => out.push(`<th>${s === 0 ? '基线' : s}</th>`));
+    out.push('</tr>');
+
+    prompts.forEach((pr, pi) => {
+      out.push(`<tr><th class="rowh">${esc(String(pr.label).replace(/\n/g, ' '))}</th>`);
+      cols.forEach(s => {
+        const c = map[li + '_' + pi + '_' + num(s)];
+        out.push('<td><div class="cell">');
+        if (!c){
+          out.push('<div class="ph">待生成</div>');
+        } else if (c.state === 'pending'){
+          out.push('<div class="ph">排队中</div>');
+        } else if (c.state === 'running'){
+          out.push('<div class="ph run">生成中…</div>');
+        } else if (c.state === 'failed'){
+          out.push(`<div class="ph err" title="${esc(c.error)}">${esc(c.error || '失败')}</div>`);
+        } else {
+          const m = c.metrics || {};
+          const star = c.recommended ? ' star' : '';
+          out.push('<div class="wrapimg">'
+            + `<img src="${esc(c.url)}?t=${Math.round(j.elapsed)}"`
+            + ` title="${esc(c.prompt_used || '')}" onclick="zoom(this.src)" alt="">`
+            + `<span class="cap${star}">${c.recommended ? '★ ' : ''}${esc(c.label)}</span></div>`);
+          if (m.sharpness != null){
+            out.push('<div class="mline">锐'
+              + `${m.sharpness} 熵${m.entropy}`
+              + (m.drift != null ? ` 偏${m.drift}` : '')
+              + (c.score != null ? ` 分${c.score}` : '')
+              + (c.degraded ? ' ⚠崩' : '')
+              + '</div>');
+          }
+        }
+        out.push('</div></td>');
+      });
+      out.push('</tr>');
+    });
+    out.push('</table></div>');
+  });
+  $('#grid').innerHTML = out.join('');
+}
+
+function finishUI(j){
+  const sums = j.summaries || {};
+  const keys = Object.keys(sums);
+  const box = $('#bestbox');
+  if (keys.length){
+    box.classList.remove('hide');
+    box.innerHTML = '<div class="vtitle">结论 —— 哪个档能用</div>' + keys.map(k => {
+      const s = sums[k];
+      return `<div class="vrow v-${esc(s.verdict)}"><b>${esc(k)}</b>`
+        + `<span class="pill p-${esc(s.verdict)}">${esc(s.verdict_txt)}</span>`
+        + `<div class="vtext">${esc(s.text)}</div></div>`;
+    }).join('');
+  } else {
+    box.classList.add('hide');
+  }
+  $('#result').classList.remove('hide');
+  /* V0.5.4：run_id 改走 data-* 属性，不再内联进 onclick。
+     run_id 是「时间_LoRA名」，而 LoRA 名是用户起的，可以是任何字符。
+     内联时 esc() 会把单引号转成 &#39;，但**浏览器解析属性时会把实体
+     解回单引号**，于是 onclick="rescore('x&#39;); ...(')" 会被解析成
+     两句 JS —— 属性注入。用 jsdom 实测确认过能闭合。
+     data-* 不参与 JS 解析，esc() 转义就够了。 */
+  $('#result').innerHTML =
+    `<a class="btn ghost sm" href="/files/${urlSegHtml(j.run_id)}/report.html" target="_blank">打开完整报告</a>`
+    + `<button class="btn ghost sm" data-act="rescore" data-run="${esc(j.run_id)}">重算评分</button>`
+    + `<button class="btn ghost sm" data-act="import" data-run="${esc(j.run_id)}">导入图片</button>`
+    + `<button class="btn ghost sm" data-act="folder" data-run="${esc(j.run_id)}">打开结果文件夹</button>`
+    + (j.note ? `<span style="color:var(--bad);font-size:12px">${esc(j.note)}</span>` : '');
+  $('#result').querySelectorAll('[data-act]').forEach(b => {
+    b.onclick = () => {
+      const rid = b.dataset.run, act = b.dataset.act;
+      if (act === 'rescore') rescore(rid);
+      else if (act === 'import') openImport(rid);
+      else openFolder(rid);
+    };
+  });
+  refreshHist();
+}
+
+function zoom(src){
+  $('#lbimg').src = src;
+  $('#lightbox').classList.add('on');
+}
+$('#lightbox').onclick = () => $('#lightbox').classList.remove('on');
+
+async function openFolder(runId){
+  const r = await post('/api/open', {run_id: runId});
+  if (r.error) alert(r.error);
+}
+
+/* -------------------------------------------------------------- 历史 */
+let HRUNS = [];          // 最近一次拉到的历史：鉴定报告单元和投放丹房都要用
+let HCUR = '';           // 当前在看的报告（run_id）
+
+async function refreshHist(){
+  const box = $('#hlist');
+  const runs = await get('/api/history');
+  HRUNS = runs || [];
+  fillRepSel();
+  if (!runs.length){
+    box.innerHTML = '<div class="empty">还没有历史记录</div>';
+    renderReportPane('');
+    return;
+  }
+  box.innerHTML = `<div class="hhead"><span>共 ${runs.length} 条 · 重算不用 ComfyUI</span>
+      <span><button class="btn ghost sm" data-reall="1">全部重算</button>
+      <button class="btn ghost sm danger" data-clear="1">清空全部</button></span></div>`
+    + runs.map(r => {
+      const sums = r.summaries || {};
+      const best = Object.entries(r.best || {}).map(([k, v]) => `${k} → ${v}`).join(' · ');
+      const fx = (r.fixed && r.fixed.length)
+        ? `<div class="hfix">固定：${esc(r.fixed.join(' + '))}</div>` : '';
+      const tg = Object.entries(r.triggers || {})
+        .map(([k, v]) => `${k.split(/[\\/]/).pop()} = ${v}`).join(' · ');
+      const tgline = tg ? `<div class="hfix">触发词：${esc(tg)}</div>` : '';
+      const vs = Object.keys(sums).map(k => {
+        const s = sums[k];
+        return `<div class="hv"><b>${esc(s.verdict_txt)}</b> · ${esc(s.text)}</div>`;
+      }).join('');
+      // 点缩略图 = 在右边「鉴定报告」单元里查阅（不跳走）；
+      // 真要开新标签，条目下面的按钮里有。
+      const thumb = r.thumb
+        ? `<a class="hthumb" href="/files/${urlSegHtml(r.run_id)}/report.html"
+             data-view="${esc(r.run_id)}" title="在这儿查阅这份报告">
+             <img src="${urlSegHtml(r.thumb)}" alt=""></a>`
+        : `<div class="hthumb" data-view="${esc(r.run_id)}">
+             <div class="noimg">无图</div></div>`;
+      return `<div class="hitem">
+        ${thumb}
+        <div class="hbody">
+          <div><b>${esc(r.loras.join(', ') || r.run_id)}</b>
+            <span class="hmeta">${esc(r.created)} · 用时 ${r.duration || 0}s · ${esc(r.status)}</span></div>
+          ${fx}${tgline}
+          ${best ? `<div class="hbest">推荐：${esc(best)}</div>` : ''}
+          ${vs}
+          <div class="hact">
+            ${r.has_report ? `<button class="btn ghost sm" data-view="${esc(r.run_id)}">查阅</button>` : ''}
+            ${r.has_report ? `<a class="btn ghost sm" href="/files/${urlSegHtml(r.run_id)}/report.html" target="_blank">新标签</a>` : ''}
+            <button class="btn ghost sm" data-re="${esc(r.run_id)}">重算</button>
+            <button class="btn ghost sm" data-imp="${esc(r.run_id)}">导入图片</button>
+            <button class="btn ghost sm" data-open="${esc(r.run_id)}">打开文件夹</button>
+            <button class="btn ghost sm danger" data-del="${esc(r.run_id)}">删除</button>
+          </div>
+        </div></div>`;
+    }).join('');
+  box.querySelectorAll('[data-open]').forEach(b =>
+    b.onclick = () => openFolder(b.dataset.open));
+  box.querySelectorAll('[data-del]').forEach(b =>
+    b.onclick = () => deleteRun(b.dataset.del));
+  box.querySelectorAll('[data-re]').forEach(b =>
+    b.onclick = () => rescore(b.dataset.re, b));
+  box.querySelectorAll('[data-imp]').forEach(b =>
+    b.onclick = () => openImport(b.dataset.imp));
+  box.querySelectorAll('[data-view]').forEach(b =>
+    b.onclick = e => { e.preventDefault(); pickReport(b.dataset.view); });
+  const clr = box.querySelector('[data-clear]');
+  if (clr) clr.onclick = clearRuns;
+  const rall = box.querySelector('[data-reall]');
+  if (rall) rall.onclick = rescoreAll;
+  // 报告单元跟历史同步：在看的那条被删了就顺位选第一条；
+  // 一条不剩就把报告单元清空，别留着上一份的图骗人。
+  const ids = runs.map(x => x.run_id);
+  if (!ids.includes(HCUR)) pickReport(ids[0] || '');
+  else renderReportPane(HCUR);
+}
+
+/* ============================================================ 鉴定台 · ① 鉴定报告
+   下拉选记录，下面 iframe 直接嵌报告页 —— 报告页本来就有「点图开大图对比」，
+   嵌进来等于把「查阅 + 对比各强度图片」一起接上了，不用重写一套。
+   删除报告走跟历史记录同一个接口，删完两边一起刷新。 */
+function fillRepSel(){
+  const sel = $('#repSel');
+  if (!sel) return;
+  const keep = HCUR;
+  sel.innerHTML = HRUNS.map(r =>
+    `<option value="${esc(r.run_id)}">${esc(r.created)} · ${esc((r.loras || []).join(', ') || r.run_id)}</option>`
+  ).join('') || '<option value="">（还没有记录）</option>';
+  if (keep && HRUNS.some(r => r.run_id === keep)) sel.value = keep;
+}
+
+function renderReportPane(runId){
+  const v = $('#repView');
+  const open = $('#repOpen'), img = $('#repImg'), del = $('#repDel');
+  const r = HRUNS.find(x => x.run_id === runId);
+  const has = !!(r && r.has_report);
+  [open, img, del].forEach(b => { if (b) b.disabled = !has; });
+  if (!runId || !has){
+    v.innerHTML = '<div class="empty">'
+      + (runId ? '这一条没有报告（可能是中途停了或者全崩）' : '左边选一条记录，这里显示它的报告')
+      + '</div>';
+    renderDropBox(null);
+    return;
+  }
+  // 桌面版暗色下，报告也得是暗的 —— iframe 是独立文档，主进程往主窗口
+  // 注入的暗色表进不去，只能靠 URL 参数告诉它用哪套（见 server.py 的 REPORT_DARK_CSS）。
+  const dark = document.documentElement.getAttribute('data-hx-theme') === 'dark';
+  v.innerHTML = `<iframe class="repframe"
+      src="/files/${urlSegHtml(runId)}/report.html${dark ? '?theme=dark' : ''}"
+      title="鉴定报告"></iframe>`;
+  renderDropBox(r);
+}
+
+function pickReport(runId){
+  HCUR = runId || '';
+  const sel = $('#repSel');
+  if (sel && sel.value !== HCUR) sel.value = HCUR;
+  document.querySelectorAll('.hlist .hitem').forEach(el => el.classList.remove('on'));
+  const hit = document.querySelector(`.hlist [data-view="${CSS.escape(HCUR)}"]`);
+  if (hit) hit.closest('.hitem') && hit.closest('.hitem').classList.add('on');
+  renderReportPane(HCUR);
+}
+
+/* ============================================================ 鉴定台 · ③ 投放丹房
+   从「这份报告测过哪些 LoRA」里挑，点个品质就投放。
+
+   V0.5.4 修的坑：历史接口的 loras 是 **slug**（显示用短名），而投放要的是
+   loras 目录下的**相对路径**（rel）。slug() 会把空格换成下划线，
+   「krea2 JUEHUOGE脸模」变成「krea2_JUEHUOGE脸模」，拿它反查必然落空——
+   表现是报告最下方写「找不到该 LoRA」、品质标签点不动。
+
+   所以现在优先用后端给的 lora_rels / fixed_rels（原名）精确匹配，
+   只有组合成分这种没有 rel 的才退回按文件名反查。
+   两层都失败才显示"不在库里"，绝不给出点了没反应的按钮。 */
+function reportLoras(r){
+  if (!r) return [];
+  const out = [];
+  const push = (n, from, rel) => {
+    const v = String(n || '').trim();
+    if (!v) return;
+    const key = String(rel || v).toLowerCase();
+    const hit = out.find(x => x.key === key);
+    if (hit){ if (from && hit.from.indexOf(from) < 0) hit.from.push(from);
+              if (!hit.rel && rel) hit.rel = rel; return; }
+    out.push({n: v, from: from ? [from] : [], rel: rel || '', key: key});
+  };
+  const rs = r.lora_rels || [];
+  (r.loras || []).forEach((n, i) => push(n, '对比', rs[i]));
+  const fr = r.fixed_rels || [];
+  (r.fixed || []).forEach((n, i) => push(n, '固定', fr[i]));
+  // 组合里参与的也算：组合验过，成分自然也验过
+  (r.combo_items || []).forEach(items =>
+    (items || []).forEach(it => push(it && it.name, '组合', it && it.rel)));
+  return out;
+}
+
+/* 先按 rel 精确命中，再按「去掉扩展名的文件名」反查。
+   同名文件可能分布在不同子目录，精确命中优先，miss 只在没有精确项时用。 */
+function findRel(name, rows, rel){
+  if (rel){
+    const t = nrel(rel);
+    const hit = rows.find(x => nrel(x.rel) === t);
+    if (hit) return nrel(hit.rel);
+  }
+  const k = String(name || '').replace(/\\/g, '/').split('/').pop()
+    .replace(/\.[^.]+$/, '').toLowerCase();
+  if (!k) return null;
+  for (const x of rows){
+    const b = String(x.name || '').replace(/\.[^.]+$/, '').toLowerCase();
+    if (b === k) return nrel(x.rel);
+  }
+  return null;
+}
+
+async function renderDropBox(r){
+  const box = $('#dropBox');
+  if (!box) return;
+  if (!r){ box.innerHTML = '<div class="empty">先在上面选一份报告</div>'; return; }
+  const list = reportLoras(r);
+  if (!list.length){
+    box.innerHTML = '<div class="empty">这份报告里没有可投放的 LoRA</div>';
+    return;
+  }
+  // 走共享缓存：切板块时 renderRooms/renderPlainBoxes 也会拉同一个接口，
+  // 三处共用一份（V0.5.3 的 libIndex）。这里原来用裸 get()，
+  // 等于每次进鉴定台都多拉一遍 164KB —— V0.5.4 一并归口。
+  const idx = await libIndex();
+  const rows = (idx && idx.rows) || [];
+  const gmap = {};
+  rows.forEach(x => { gmap[nrel(x.rel)] = x.grade || ''; });
+  const glist = (idx && idx.grades && idx.grades.length)
+    ? idx.grades : (LIB.grades || []);
+  if (glist.length) LIB.grades = glist;
+
+  const missing = list.filter(it => !findRel(it.n, rows, it.rel));
+  const head = `<div class="drophead">这份报告测过 <b>${list.length}</b> 个 LoRA
+      —— 给满意的点个品质，它就直接进对应的丹房。`
+    + (missing.length
+        ? `<div class="dtip" style="margin-top:4px">其中 ${missing.length} 个不在当前库里`
+          + `（可能被移动或删除），无法定级。</div>` : '')
+    + '</div>';
+
+  box.innerHTML = head
+    + list.map((it) => {
+      const {n, from} = it;
+      const tag = from.length ? `<span class="dtag">${esc(from.join(' · '))}</span>` : '';
+      const rel = findRel(n, rows, it.rel);
+      if (!rel){
+        return `<div class="drow"><div class="dt">
+          <b>${esc(base(n))}</b>${tag}
+          <span class="dtip">不在当前 LoRA 库里，投不了</span></div></div>`;
+      }
+      const g = gmap[rel] || '';
+      const cur = glist.find(x => x.key === g);
+      const btns = glist.map(x => {
+        const on = x.key === g;
+        return `<button class="dg${on ? ' on' : ''}" data-rel="${esc(rel)}"
+           data-g="${esc(x.key)}"
+           style="${on ? `background:${x.bg};color:${x.fg};border-color:${x.fg}` : ''}"
+           >${esc(x.label)}</button>`;
+      }).join('');
+      const un = g
+        ? `<button class="dg" data-rel="${esc(rel)}" data-g="">撤回定级</button>` : '';
+      return `<div class="drow">
+        <div class="dt"><b>${esc(base(n))}</b>${tag}
+          ${cur
+            ? `<span class="badge" style="background:${cur.bg};color:${cur.fg}">${esc(cur.label)}</span>`
+            : '<span class="badge">未定级</span>'}</div>
+        <div class="dgrad">${btns}${un}</div>
+      </div>`;
+    }).join('');
+
+  box.querySelectorAll('[data-rel]').forEach(b => b.onclick = async () => {
+    b.disabled = true;
+    const res = await post('/api/lib/grade_set',
+                           {rel: b.dataset.rel, grade: b.dataset.g || ''});
+    b.disabled = false;
+    if (res && res.error){ alert(res.error); return; }
+    GRADE_DIRTY = true;
+    renderDropBox(r);
+  });
+}
+
+async function rescore(runId, btn){
+  if (btn){ btn.disabled = true; btn.textContent = '重算中…'; }
+  let r;
+  try { r = await post('/api/rescore', {run_id: runId}); }
+  finally { if (btn){ btn.disabled = false; btn.textContent = '重算'; } }
+  if (!r || r.error){ alert((r && r.error) || '重算失败'); return; }
+  refreshHist();
+}
+
+async function rescoreAll(){
+  if (!confirm('重算全部历史记录的评分并重出报告？\n'
+    + '不会重新出图，只是拿已有的图按当前口径重算指标 —— 改过评分逻辑后很适合回溯。')) return;
+  const r = await post('/api/rescore_all', {});
+  if (r.error){ alert(r.error); return; }
+  alert('完成：重算 ' + r.done + ' 条'
+    + (r.failed.length ? '，失败 ' + r.failed.length + ' 条' : ''));
+  refreshHist();
+}
+
+async function deleteRun(runId){
+  if (!confirm('删除这条历史记录？\n其中的出图和报告会一并删除，无法恢复。')) return;
+  const r = await post('/api/history/delete', {run_id: runId});
+  if (r.error){ alert(r.error); return; }
+  if (HCUR === runId) HCUR = '';
+  await refreshHist();
+}
+
+async function clearRuns(){
+  if (!confirm('清空全部历史记录？\n所有历史出图和报告都会被删除，无法恢复。\n（当前正在跑的任务不受影响）')) return;
+  const r = await post('/api/history/clear', {});
+  if (r.error){ alert(r.error); return; }
+  refreshHist();
+}
+
+/* ------------------------------------------------ 导入图片（离线可用） */
+let IMP = {src: null};
+
+function closeImport(){ $('#impModal').classList.remove('on'); }
+
+async function openImport(preRun){
+  let runs = (S.boot && S.boot.runs) || [];
+  if (!runs.length) runs = await get('/api/history');
+  if (!runs.length){
+    alert('还没有任何记录可以挂靠。\n\n先用「开始测试」跑一次（哪怕只有一张），'
+      + '生成的对比矩阵就是导入图片的落点。');
+    return;
+  }
+  if (S.boot) S.boot.runs = runs;
+  $('#impRun').innerHTML = runs.map(r =>
+    `<option value="${esc(r.run_id)}">${esc(r.created || r.run_id)} · `
+    + `${esc((r.loras || []).join(', ') || r.run_id)}</option>`).join('');
+  if (preRun) $('#impRun').value = preRun;
+  $('#impDir').value = ((S.boot && S.boot.config) || {}).comfy_output || '';
+  $('#impList').innerHTML = '';
+  IMP.src = null;
+  $('#impSel').textContent = '未选择图片';
+  $('#impGo').disabled = true;
+  $('#impModal').classList.add('on');
+  await impLoadRun();
+  if ($('#impDir').value) impScanDir();
+}
+
+async function impLoadRun(){
+  const rid = $('#impRun').value;
+  if (!rid) return;
+  let d = {};
+  try { d = await get('/api/history/' + encodeURIComponent(rid)); } catch (e) {}
+  const spec = d.spec || {};
+  $('#impLora').innerHTML = (spec.loras || []).map((n, i) =>
+    `<option value="${i}">${esc(base(n))}</option>`).join('')
+    || '<option value="0">（没有）</option>';
+  $('#impPrompt').innerHTML = (spec.prompts || []).map((p, i) =>
+    `<option value="${i}">${esc(String(p.label || ('提示词' + i)).replace(/\n/g, ' '))}</option>`
+    ).join('') || '<option value="0">（没有）</option>';
+  const ss = (spec.strengths || []).map(Number).filter(v => v !== 0);
+  $('#impStrength').value = ss.length ? ss[0] : 0.8;
+}
+
+async function impScanDir(){
+  const dir = $('#impDir').value.trim();
+  const r = await get('/api/import/list?dir=' + encodeURIComponent(dir));
+  const hint = $('#impHint');
+  const box = $('#impList');
+  if (r.error){
+    hint.textContent = r.error;
+    box.innerHTML = '';
+    return;
+  }
+  hint.innerHTML = `目录：<code>${esc(r.dir)}</code> · 找到 ${r.count} 张（按时间倒序，最多列 96 张）`;
+  if (!r.images.length){ box.innerHTML = '<div class="empty">这个目录里没有图片</div>'; return; }
+  box.innerHTML = r.images.map((im, i) =>
+    `<div class="icell" data-i="${i}" title="${esc(im.rel)}">`
+    + `<img loading="lazy" src="/api/import/thumb?path=${encodeURIComponent(im.path)}" alt="">`
+    + `<div class="inm">${esc(im.name)}</div></div>`).join('');
+  box.querySelectorAll('.icell').forEach(el => el.onclick = () => {
+    box.querySelectorAll('.icell').forEach(x => x.classList.remove('on'));
+    el.classList.add('on');
+    const im = r.images[+el.dataset.i];
+    IMP.src = im.path;
+    $('#impSel').textContent = im.name;
+    $('#impGo').disabled = false;
+  });
+}
+
+async function doImport(){
+  if (!IMP.src) return;
+  const btn = $('#impGo');
+  btn.disabled = true;
+  btn.textContent = '导入中…';
+  let r;
+  try {
+    r = await post('/api/import', {
+      run_id: $('#impRun').value, path: IMP.src,
+      lora_i: parseInt($('#impLora').value) || 0,
+      prompt_i: parseInt($('#impPrompt').value) || 0,
+      strength: parseFloat($('#impStrength').value) || 0,
+    });
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '导入并重算';
+  }
+  if (!r || r.error){ alert((r && r.error) || '导入失败'); return; }
+  if (S.boot) S.boot.runs = r.runs;
+  closeImport();
+  alert('已导入并重算：' + r.file + '\n打开「历史记录」→「报告」就能看到它在对比矩阵里的位置。');
+  refreshHist();
+}
+
+/* ---------------------------------------------------------- 模型设置 */
+const MK = [['unet', '底模 (unet)', 'unets'],
+            ['clip', '文本编码器 (clip)', 'clips'],
+            ['clip_type', 'CLIP 类型', 'clip_types'],
+            ['vae', 'VAE', 'vaes']];
+
+function modelFieldsHTML(){
+  const g = (S.boot && S.boot.diagnostics) || {};
+  const avail = g.available || {};
+  const cfg = (S.boot && S.boot.config) || {};
+  const miss = g.missing || {};
+  return MK.map(([k, label, poolKey]) => {
+    const pool = avail[poolKey] || [];
+    if (!pool.length){
+      return `<label>${esc(label)}<input class="inp" value="${esc(cfg[k] || '')}" disabled></label>`;
+    }
+    // 预选顺序：当前配置（若存在）→ 后端猜的候选 → 第一个
+    let sel = cfg[k];
+    if (pool.indexOf(sel) < 0) sel = (miss[k] && miss[k].suggest) || pool[0];
+    const opts = pool.map(x =>
+      `<option value="${esc(x)}"${x === sel ? ' selected' : ''}>${esc(x)}</option>`).join('');
+    return `<label>${esc(label)}<select class="inp" data-mk="${k}">${opts}</select></label>`;
+  }).join('');
+}
+
+function renderModel(){
+  const box = $('#modelFields');
+  if (!box) return;
+  box.innerHTML = modelFieldsHTML();
+  const cfg = (S.boot && S.boot.config) || {};
+  const fl = (S.boot && S.boot.flags) || {};
+  $('#fComfyRoot').value = cfg.comfy_root || '';
+  $('#fComfyLaunch').value = cfg.comfy_launch || '';
+  $('#fLoraDir').value = cfg.lora_dir || '';
+  $('#fAutoStart').checked = !!fl.comfy_autostart;
+  $('#fAutoStop').checked = !!fl.comfy_autostop;
+  const g = (S.boot && S.boot.diagnostics) || {};
+  const n = Object.keys(g.missing || {}).length;
+  const alive = !!(S.boot && S.boot.comfy_alive);
+  const badge = $('#modelBadge');
+  const cf = (S.boot && S.boot.comfy) || {};
+  badge.className = 'badge ' + (alive && !n ? 'ok' : 'bad');
+  badge.textContent = !alive
+    ? (cf.can_launch ? '离线 · 可自动启动' : '离线 · 缺启动路径')
+    : (n ? n + ' 项待配置' : '已匹配');
+  if ((n || !alive) && alive) $('#modelBox').open = true;   // 有问题就直接展开
+}
+
+async function saveModel(){
+  const out = {};
+  document.querySelectorAll('#modelFields select[data-mk]').forEach(s => {
+    if (s.value) out[s.dataset.mk] = s.value;
+  });
+  out.comfy_root = $('#fComfyRoot').value.trim();
+  out.comfy_launch = $('#fComfyLaunch').value.trim();
+  out.lora_dir = $('#fLoraDir').value.trim();
+  out.comfy_autostart = $('#fAutoStart').checked;
+  out.comfy_autostop = $('#fAutoStop').checked;
+  const r = await post('/api/config', out);
+  if (r && r.error){ alert(r.error); return; }
+  location.reload();
+}
+
+/* ------------------------------------------------- V0.4.3：报错反馈信息
+   一键把「这台机器的环境 + 全部报错记录」整理成一段文字进剪贴板。
+
+   为什么做成"复制到剪贴板"而不是"下载一个文件"：
+     · 用户要反馈的时候，多半是在微信/QQ 上跟人说话。剪贴板可以直接粘，
+       下载下来的文件还得先找到、再选中、再上传 —— 少一步就少一半人放弃。
+     · 工具是本地跑的，部分环境（部分浏览器策略）会拦下载，
+       剪贴板没有这个坑。
+
+   两条降级路径都要有：navigator.clipboard 在没有 HTTPS 的 127.0.0.1
+   以外的环境可能被拒（Firefox 老版本就是这样），所以还得能手动选。
+
+   后端返回的是纯文本而不是 JSON：这份东西最后是要给人看的，
+   中间不该插一道"先解析再还原"的步骤。 */
+async function copyReport(btn){
+  const hint = $('#reportHint');
+  if (btn){ btn.disabled = true; btn.textContent = '整理中…'; }
+  hint.classList.remove('hide');
+  hint.innerHTML = '<span style="color:var(--ink3)">正在整理…</span>';
+  let text = '';
+  let res = null;
+  try {
+    res = await fetch('/api/report');
+    text = await res.text();
+  } catch (e){
+    hint.innerHTML = '<span style="color:#b91c1c">没拿到反馈信息：'
+      + esc(e.message || e) + '</span>';
+    if (btn){ btn.disabled = false; btn.textContent = '出问题？复制报错反馈信息'; }
+    return;
+  }
+  // 后端出错时也是纯文本，直接把内容摆出来给用户看
+  if (res && res.status !== 200){
+    hint.innerHTML = '<span style="color:#b91c1c">' + esc(text.slice(0, 400))
+      + '</span>';
+    if (btn){ btn.disabled = false; btn.textContent = '出问题？复制报错反馈信息'; }
+    return;
+  }
+  let done = false;
+  try {
+    if (navigator.clipboard && window.isSecureContext){
+      await navigator.clipboard.writeText(text);
+      done = true;
+    }
+  } catch (e){ done = false; }
+  if (done){
+    hint.innerHTML = '<span style="color:#15803d">已复制到剪贴板，直接粘给作者就行'
+      + '（共 ' + text.length + ' 字）</span>';
+  } else {
+    // 剪贴板被拒：给一个可选中的文本框，别让用户什么都拿不到
+    hint.innerHTML = '<span style="color:#b45309">浏览器不让自动复制，'
+      + '下面这段请手动全选复制（Ctrl+A / Ctrl+C）：</span>'
+      + '<textarea class="inp" readonly style="width:100%;height:220px;'
+      + 'font:11px/1.5 ui-monospace,Consolas,monospace;margin-top:6px">'
+      + esc(text) + '</textarea>';
+    const ta = hint.querySelector('textarea');
+    if (ta){ ta.focus(); ta.select(); }
+  }
+  if (btn){ btn.disabled = false; btn.textContent = '出问题？复制报错反馈信息'; }
+}
+
+/* ------------------------------------------------- V0.4.2：自动扫描 ComfyUI
+   启动时后端已经悄悄扫过一次并写进 config.json 了，所以绝大多数人
+   点不到这个按钮。留它是因为：机器上装了多个 ComfyUI 时程序可能挑错，
+   或者 ComfyUI 装得太偏、启动时那25 秒没扫到 ——
+   这两种情况下有个「我自己找」的口子，比让人去翻文件夹强得多。 */
+async function scanComfy(btn){
+  const box = $('#scanBox');
+  if (btn){ btn.disabled = true; btn.textContent = '扫描中…'; }
+  box.classList.remove('hide');
+  box.innerHTML = '<div class="swhy">正在扫本机的 ComfyUI…'
+    + '（先看正在运行的进程，再扫常见位置和名字里带 comfy 的目录，最多 20 秒）</div>';
+  let r;
+  try { r = await get('/api/comfy/scan'); }
+  catch (e){
+    box.innerHTML = '<div class="swhy">扫描没成功：' + esc(e.message || e) + '</div>';
+    if (btn){ btn.disabled = false; btn.textContent = '自动扫描'; }
+    return;
+  }
+  if (btn){ btn.disabled = false; btn.textContent = '自动扫描'; }
+  if (r.error){ box.innerHTML = '<div class="swhy">' + esc(r.error) + '</div>'; return; }
+  const cs = r.candidates || [];
+  const cur = $('#fComfyRoot').value.trim();
+  if (!cs.length){
+    // 扫不到不是死路：给一句能照做的提示，而不是干瞪眼
+    box.innerHTML = '<div class="swhy">没在本机找到 ComfyUI。可能是：<br>'
+      + '· ComfyUI 还没装 / 装在网络盘或移动硬盘里（扫不到）<br>'
+      + '· 装得太深，超出扫描范围<br>'
+      + '· 那台机器上跑 ComfyUI 用的是别人的账号<br>'
+      + '→ 直接把路径粘到上面那个输入框也行，粘完点「保存并重载」。</div>';
+    return;
+  }
+  box.innerHTML = cs.map((c, i) => {
+    const on = (cur && c.path.toLowerCase() === cur.toLowerCase());
+    // loras 只显示相对根目录的那几层（…\ComfyUI\models\loras）。
+    // 完整路径已经在上面那行给过了，这里再铺一遍只会把「用这个」挤到屏幕外。
+    const shortL = c.loras
+      ? '…' + normPathForDisplay(c.loras.replace(c.path, ''))
+      : '';
+    return `<div class="srow${on ? ' on' : ''}" data-i="${i}">
+      <span class="sp">${esc(normPathForDisplay(c.path))}
+        <div class="swhy">${esc(c.how)}${c.loras
+          ? '　·　含 loras：' + esc(shortL) : '　·　没找到 models/loras'}</div>
+      </span>
+      <span class="sm">${on ? '当前' : '用这个'}</span>
+    </div>`;
+  }).join('');
+  // 点一行 = 填进输入框（不直接保存）：让人先看见填的是什么，再点保存
+  box.querySelectorAll('.srow').forEach(n => n.onclick = () => {
+    const c = cs[+n.dataset.i];
+    $('#fComfyRoot').value = c.path;
+    // loras 目录一起补上，省得再自己推一遍
+    if (c.loras) $('#fLoraDir').value = c.loras;
+    box.querySelectorAll('.srow').forEach(x => x.classList.remove('on'));
+    n.classList.add('on');
+    n.querySelector('.sm').textContent = '已填入';
+    setModelHint('已填入上面的路径，确认无误点「保存并重载」生效');
+  });
+  setModelHint(cs.length > 1
+    ? `找到 ${cs.length} 个可能的 ComfyUI，点一个选它`
+    : '找到 1 个，点它填入路径');
+}
+function setModelHint(txt){
+  const n = $('#modelScanHint');
+  if (!n) return;
+  n.textContent = txt || '';
+  n.classList.toggle('hide', !txt);
+}
+
+/* ------------------------------------------------- ComfyUI 启停 / 离线 */
+function setConn(b){
+  const c = $('#conn');
+  if (b.comfy_alive){
+    c.className = 'conn ok';
+    c.innerHTML = `<b></b><span>ComfyUI 已连接 · v${esc(b.comfy_version)}</span>`;
+  } else {
+    c.className = 'conn bad';
+    c.innerHTML = '<b></b><span>离线模式 —— ComfyUI 未运行</span>';
+  }
+}
+
+async function reloadBoot(){
+  const b = await get('/api/bootstrap');
+  S.boot = b;
+  setConn(b);
+  renderDiag(b);
+  renderModel();
+  renderFixedOptions(); renderFixed();
+  renderLoras(); renderChips();
+  return b;
+}
+
+async function launchComfy(){
+  const r = await post('/api/comfy/start', {});
+  if (!r.ok){ alert(r.message || '启动失败'); return false; }
+  const msg = $('#comfyMsg');
+  if (msg) msg.textContent = r.message || '';
+  return await waitComfy();
+}
+
+async function waitComfy(){
+  for (let i = 0; i < 300; i++){
+    await new Promise(z => setTimeout(z, 2000));
+    let st;
+    try { st = await get('/api/comfy/state'); } catch (e) { continue; }
+    const msg = $('#comfyMsg');
+    if (st.alive){
+      if (msg) msg.textContent = '已就绪';
+      await reloadBoot();
+      return true;
+    }
+    if (msg) msg.textContent = st.message || '正在启动…';
+    if (!st.busy){
+      const m = st.message || '启动未成功，请手动启动 ComfyUI';
+      if (msg) msg.textContent = m;
+      alert(m);
+      return false;
+    }
+  }
+  return false;
+}
+
+/* ---------------------------------------------------------- 环境自检条 */
+// 「这个 ComfyUI 是本工具拉起来的」时，给一个关掉它的入口。
+// 只关自己启动的那个，用户手动开的一律不碰。
+function comfyStopHTML(b){
+  const cf = (b && b.comfy) || {};
+  if (!cf.we_started) return '';
+  return '<div class="fix" style="border-top-color:#bbf7d0">'
+    + '<span>这个 ComfyUI 是本工具启动的</span>'
+    + '<button class="btn ghost sm" id="stopComfy">关闭 ComfyUI</button>'
+    + '</div>';
+}
+
+function wireStopComfy(){
+  const sb = $('#stopComfy');
+  if (!sb) return;
+  sb.onclick = async () => {
+    if (!confirm('关闭由本工具启动的那个 ComfyUI？\n（你自己手动开的 ComfyUI 不会被关）')) return;
+    const r = await post('/api/comfy/stop', {});
+    alert(r.error || r.message || '已关闭');
+    await reloadBoot();
+  };
+}
+
+function renderDiag(b){
+  const el = $('#diag');
+  const g = b.diagnostics || {};
+  const ws = g.warnings || [];
+  el.hidden = false;
+
+  // 离线不是「错误」，只是一种状态 —— 要说明这时候还能干什么
+  if (!b.comfy_alive){
+    const cf = b.comfy || {};
+    el.className = 'diag offline';
+    el.innerHTML = '<div><b>离线模式</b> —— ComfyUI 没在运行，暂时出不了新的图。'
+      + '<br>现在照样能用：看历史记录、重算评分、重出报告和对比大图、'
+      + `把外部图片导入进来一起评分对比。<br>`
+      + (cf.can_launch
+          ? '启动脚本已找到：<code>' + esc(cf.launch_cmd) + '</code>'
+          : '<span style="color:#b45309">没找到启动脚本 —— 在下面「模型设置」里把 '
+            + 'ComfyUI 根目录指向便携版根目录（有 run_nvidia_gpu.bat 的那层）。</span>')
+      + '</div>'
+      + '<div class="fix"><button class="btn ghost sm" id="startComfy">启动 ComfyUI</button>'
+      + '<span id="comfyMsg" class="dimtxt"></span></div>';
+    const sb = $('#startComfy');
+    if (sb) sb.onclick = () => launchComfy();
+    return;
+  }
+  if (ws.length){
+    const n = Object.keys(g.missing || {}).length;
+    el.className = 'diag warn';
+    el.innerHTML = '<div><b>环境自检发现 ' + ws.length + ' 处需要注意：</b><ul>'
+      + ws.map(w => '<li>' + esc(w) + '</li>').join('') + '</ul>'
+      + '<div class="fix">把左边「模型设置」里的四项，改成你机器上已有的文件即可。'
+      + '<button class="btn ghost sm" id="openModel">打开模型设置</button></div>'
+      + '</div>' + comfyStopHTML(b);
+    const ob = $('#openModel');
+    if (ob) ob.onclick = () => {
+      const mb = $('#modelBox');
+      mb.open = true;
+      mb.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    };
+    wireStopComfy();
+    return;
+  }
+  el.className = 'diag ok';
+  el.innerHTML = '<div>环境就绪 —— ComfyUI v' + esc(b.comfy_version || '?')
+    + ' · 底模 / CLIP / VAE 均匹配 · LoRA 共 ' + (b.loras || []).length
+    + ' 个可选</div>' + comfyStopHTML(b);
+  wireStopComfy();
+}
+
+/* -------------------------------------------------------------- 启动 */
+async function boot(){
+  const b = await get('/api/bootstrap');
+  S.boot = b;
+  setConn(b);
+  renderDiag(b);
+  renderModel();
+  $('#saveModel').onclick = saveModel;
+  $('#btnReport').onclick = e => copyReport(e.currentTarget);
+  // V0.4.2：扫描按钮在静态 HTML 里（不在 renderModel 重建的那块），
+  // 所以这里绑一次就够，不用每次 boot 都重绑。
+  $('#fScanComfy').onclick = e => scanComfy(e.currentTarget);
+  // 默认提示词
+  S.prompts = [{
+    label: '人像',
+    text: 'An East Asian woman with long dark hair sits by a window in the late '
+      + 'afternoon, wearing a plain linen shirt, her gaze turned toward the light '
+      + 'outside the frame. A half-empty ceramic cup rests on the table in front '
+      + 'of her. Dust drifts in the low sunbeam that crosses the room.'
+  }];
+  const d = b.defaults || {};
+  if (d.seed != null) $('#fSeed').value = d.seed;
+  if (d.steps != null) $('#fSteps').value = d.steps;
+  if (d.width != null) $('#fW').value = d.width;
+  if (d.height != null) $('#fH').value = d.height;
+  if (d.cfg != null) $('#fCfg').value = d.cfg;
+  if (d.sampler) $('#fSampler').value = d.sampler;
+  if (Array.isArray(d.strengths)){
+    const nz = d.strengths.map(Number).filter(v => v !== 0);
+    if (nz.length){ S.strengths = nz; S.active = new Set(nz); }
+  }
+  renderFixedOptions(); renderFixed();
+  renderLoras(); renderChips(); renderStrengths(); renderPrompts();
+  renderPresets(); renderProfileBox(); renderWorkflows();
+  renderCombos();                       // V0.5.1：第 5 单元
+  updateEst();
+  // V0.4.2：品质等级表随启动数据一起落地。
+  // 不等libTagScan() —— 等级是静态的4 档，跟扫没扫过库没关系；
+  // 以前只在打标时赋值，导致刚接入库右键菜单里一档品级都没有。
+  LIB.grades = (b.grades || []).slice();
+  $('#loraList').scrollTop = 0;
+
+  const j = await get('/api/job');
+  if (j.status && j.status !== 'idle'){ renderJob(j); if (j.status === 'running') poll(); }
+  // V0.5.1：地址决定板块（桌面版首页点进来是 /run /hist /lib，
+  // 网页版收藏 / 分享用的是 #run / #hist / #lib —— 两条都认）。
+  // 放这儿而不是单独 refreshHist()：只有落在鉴定台才拉历史、才嵌报告 iframe，
+  // 在别的板块不白拉数据。
+  // V0.5.3：silent —— 首屏地址本来就对，别白 replaceState 一次。
+  showSection(SEC, {silent: true});
+}
+
+/* 当前板块：地址优先，其次 hash，兜底 run。
+   这三个板块是三个独立子界面 —— 从哪个地址进来就只渲染哪一个，
+   另外两个连侧栏带正文一律不出现。 */
+const SEC = (function(){
+  let m = /^\/(run|hist|lib)(\/|$)/.exec(location.pathname || '');
+  if (m) return m[1];
+  m = /^#(run|hist|lib)$/.exec(location.hash || '');
+  return m ? m[1] : 'run';
+})();
+const SECORDER = ['run', 'hist', 'lib'];
+const SECNAME = {run: '验丹炉', hist: '鉴定台', lib: '丹房'};
+
+/* 各板块「拉到什么程度了」。V0.5.3 用它决定切回旧板块时要不要重画。
+   切板块不再整页重载，所以这份状态才有意义 —— 之前每次都是新页面，
+   天然全空。现在记住「这块已经画好了」，切回来立刻就是成品。 */
+const SECREADY = {run: false, hist: false, lib: false};
+
+/* boot() 的完成信号。
+   验丹炉 9 个单元的数据全靠 boot() 铺，别的板块不靠它。
+   V0.5.3 之前 showSection('run') 无条件把 SECREADY.run 置 true，
+   于是 boot 还在跑（首次 /api/bootstrap 要 4 秒多）时，
+   用户切去鉴定台再切回来会看到**空的验丹炉** ——
+   不报错、不空白报错，只是「该有的东西没有」，最难查的那种。 */
+let BOOTDONE = false;
+let BOOTWAIT = Promise.resolve();
+
+/* 切板块：切显示 + 高亮 + 按需加载。
+
+   V0.5.3 修的坑（用户报「点板块很慢、三个板块看起来一样」）：
+
+   1. 侧栏原本是 `<a href="/run">`，点一下就是**整页导航** ——
+      丢掉整页、重下 210KB HTML、重解析、重跑整个 boot()。而 boot() 里
+      的 /api/bootstrap 首次要 4.3 秒（里面做了 ComfyUI 网络探测 +
+      扫工作流目录），这些活跟「当前是哪个板块」一点关系都没有，
+      却每次切板块都重做一遍。
+      现在改成 pushState 换地址、页面不重载：地址照样是 /run /hist /lib
+      （深链、刷新、桌面壳都照旧能用），但切换只花一趟接口的时间。
+   2. 整页重载期间新页面还没到，屏幕上一直是**旧板块**的内容 ——
+      那就是「三个板块看起来一样」的直接原因：用户不是分辨不出，
+      是真的还没换。现在同步换 body[data-sec]，旧内容立刻让位。
+   3. 数据在路上时不能给一片空白让人以为坏了，所以每个板块都有
+      「正在加载」骨架（secLoading）。 */
+function showSection(k, opts){
+  opts = opts || {};
+  if (SECORDER.indexOf(k) < 0) k = 'run';
+  const same = document.body.dataset.sec === k;
+  document.body.dataset.sec = k;
+  document.body.dataset.secbusy = '1';
+  SECORDER.forEach(function(n){
+    const el = document.getElementById('tab-' + n);
+    if (el) el.classList.toggle('hide', n !== k);
+  });
+  document.querySelectorAll('.navtabs .snlink').forEach(function(a){
+    a.classList.toggle('on', a.dataset.tab === k);
+  });
+  document.title = (SECNAME[k] || '') + ' · HX验丹炉';
+  // 地址跟着变（用 replaceState：切板块不该在历史里堆一串记录，
+  // 用户按一次返回应该回主界面，不是回上一个板块）
+  if (!same && !opts.silent && location.pathname !== '/' + k){
+    try { history.replaceState(null, '', '/' + k); } catch (e){}
+  }
+  if (k === 'run'){
+    // 验丹炉的数据不在这条路上 —— 它们由 boot() 一次性铺好
+    // （/api/bootstrap 首次要 4 秒多）。所以这里不能无条件把
+    // SECREADY.run 置 true：boot 还没回来时切去鉴定台、再切回来，
+    // 会看到**空的验丹炉**（V0.5.3 修的第二个坑）。
+    // 现在跟着 BOOTDONE 走：boot 没完成就等，完成后立刻撤骨架。
+    if (BOOTDONE){
+      secLoading(k, false);
+      SECREADY.run = true;
+      return;
+    }
+    secLoading(k, true);
+    BOOTWAIT.then(function(){
+      if (document.body.dataset.sec === 'run') secLoading(k, false);
+      SECREADY.run = true;
+    });
+    return;
+  }
+  const go = k === 'hist' ? refreshHist : libTab;
+  // 已经画好的板块切回来不再拉一遍接口（这次修的核心之一）
+  if (SECREADY[k] && same) return;
+  secLoading(k, true);
+  Promise.resolve()
+    .then(go)
+    .catch(e => secLoading(k, false, String(e && e.message || e)))
+    .finally(() => {
+      SECREADY[k] = true;
+      secLoading(k, false);
+      if (document.body.dataset.sec === k){
+        document.body.dataset.secbusy = '';
+      }
+    });
+}
+
+/* 切换中的骨架：先把旧内容换成「正在加载」，数据到了再撤。
+   没有这一步，用户看到的是「点了没反应」，比慢更让人以为是坏的。 */
+function secLoading(k, on, err){
+  const box = document.getElementById('tab-' + k);
+  if (!box) return;
+  let sk = box.querySelector('.secsk');
+  if (on){
+    if (!sk){
+      sk = document.createElement('div');
+      sk.className = 'secsk';
+      sk.innerHTML = '<div class="spin"></div><div class="skt">正在加载'
+        + esc(SECNAME[k] || '') + '…</div>';
+      box.insertBefore(sk, box.firstElementChild);
+    } else {
+      sk.style.display = '';
+    }
+  } else if (sk){
+    if (err){
+      sk.innerHTML = '<div class="skt err">这个板块没加载出来：'
+        + esc(err) + '</div>';
+      sk.style.display = '';
+    } else {
+      sk.remove();
+    }
+  }
+}
+
+/* 侧栏点板块：拦下来改成 pushState，不再整页重载。
+   V0.5.3 之前这里是纯 <a href>，点一下丢掉整页 —— 见 showSection 的说明。
+   仍然保留 href 属性（右键新标签打开、复制链接都得靠它），
+   只是左键走这里。 */
+document.addEventListener('click', function(e){
+  const a = e.target.closest && e.target.closest('.navtabs .snlink');
+  if (!a) return;
+  if (e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+  const k = a.dataset.tab;
+  if (SECORDER.indexOf(k) < 0) return;
+  e.preventDefault();
+  showSection(k);
+});
+// 系统前进/后退（用户手动改地址栏、或者以后加了 pushState 的话）
+window.addEventListener('popstate', function(){
+  const m = /^\/(run|hist|lib)(\/|$)/.exec(location.pathname || '');
+  showSection(m ? m[1] : 'run', {silent: true});
+});
+
+function jumpToHash(){
+  const m = /^#(run|hist|lib)$/.exec(location.hash || '');
+  if (!m) return false;
+  showSection(m[1], {silent: true});
+  return true;
+}
+// 网页版直接改 hash 也能切（桌面版走地址，这条用不上但无害）
+window.addEventListener('hashchange', jumpToHash);
+
+/* ------------------------------------------------------------ 轮询 */
+async function poll(){
+  clearTimeout(S.timer);
+  const j = await get('/api/job');
+  renderJob(j);
+  if (j.status === 'running') S.timer = setTimeout(poll, 1500);
+}
+
+/* ------------------------------------------------------------ 交互 */
+$('#search').oninput = renderLoras;
+
+$('#fixedAdd').onclick = () => {
+  const n = $('#fixedSel').value;
+  if (!n) return;
+  if (S.fixed.length >= 8){ alert('固定 LoRA 最多 8 个'); return; }
+  if (S.fixed.some(f => f.name === n)){ alert('这个 LoRA 已经在固定列表里了'); return; }
+  let moved = false;
+  if (S.loras.has(n)){ S.loras.delete(n); moved = true; }   // 从对比组移到固定组
+  S.fixed.push({name: n, strength: 1.0});
+  $('#fixedSel').value = '';
+  renderFixed(); syncFixedOptions(); renderLoras(); renderChips(); updateEst();
+  if (moved) alert('「' + base(n) + '」已从对比组移到固定组。');
+};
+
+$('#addS').onclick = () => {
+  const raw = ($('#customS').value || '').split(',');
+  let added = 0;
+  raw.forEach(x => {
+    const v = parseFloat(x.trim());
+    if (!isNaN(v) && v !== 0){
+      if (!S.strengths.includes(v)) S.strengths.push(v);
+      S.active.add(v); added++;
+    }
+  });
+  if (added){ $('#customS').value = ''; saveStrengths(); }
+  renderStrengths(); updateEst();
+};
+
+$('#addP').onclick = () => {
+  S.prompts.push({label: '提示词 ' + (S.prompts.length + 1), text: ''});
+  renderPrompts(); updateEst();
+};
+
+$('#saveP').onclick = async () => {
+  const p = S.prompts[0];
+  if (!p || !p.text.trim()){ alert('第一条提示词是空的'); return; }
+  const name = await askText('预设名称：', p.label || '我的提示词');
+  if (!name) return;
+  const r = await post('/api/presets', {name: name, text: p.text.trim()});
+  if (r.error){ alert(r.error); return; }
+  S.boot.presets = r.presets; renderPresets();
+};
+
+$('#loadP').onclick = () => {
+  const i = $('#presetSel').value;
+  if (i === '') return;
+  const p = S.boot.presets[+i];
+  if (!p) return;
+  S.prompts[0] = {label: p.name, text: p.text};
+  renderPrompts(); updateEst();
+};
+
+$('#randSeed').onclick = () => {
+  $('#fSeed').value = Math.floor(Math.random() * 2000000000) + 1;
+};
+$('#quick768').onclick = () => { $('#fW').value = 768; $('#fH').value = 768; updateEst(); };
+$('#quick1024').onclick = () => { $('#fW').value = 1024; $('#fH').value = 1024; updateEst(); };
+['#fW','#fH'].forEach(s => $(s).oninput = updateEst);
+
+$('#comboAdd').onclick = () => {
+  if (S.combos.length >= 6){
+    alert('最多 6 组组合 —— 再多也记不住哪组是哪组'); return;
+  }
+  S.combos.push({items: [{name: '', strength: 1.0}, {name: '', strength: 1.0}]});
+  renderCombos();
+};
+
+$('#start').onclick = async () => {
+  // 就绪检查提到最前面：9 个单元差哪一样，一次说清再走。
+  // 以前是撞到哪条校验报哪条，用户得试好几遍才知道还缺什么。
+  const iss = readyIssues();
+  if (iss.length){
+    renderReady();
+    alert('还差这些才能开跑：\n\n· ' + iss.join('\n· '));
+    return;
+  }
+  await startScan();
+};
+
+async function startScan(){
+  const prompts = S.prompts.filter(p => p.text.trim())
+    .map(p => ({label: p.label || '提示词', text: p.text.trim()}));
+  const spec = {
+    loras: [...S.loras],
+    fixed: S.fixed.map(f => ({name: f.name, strength: f.strength})),
+    triggers: Object.assign({}, S.triggers),
+    // V0.5.1：第 5 单元的 LoRA 组合。只收「≥2 个有名有姓的 LoRA」的组，
+    // 半成品不提交（后端 norm_combos 会再筛一遍，两道保险）。
+    combos: comboValid(S.combos).map(c => ({
+      label: String(c.label || '').trim(),
+      items: c.items.filter(i => i && i.name).map(i => {
+        const v = parseFloat(i.strength);
+        return {name: i.name, strength: (isNaN(v) || v === 0) ? 1.0 : v};
+      }),
+    })),
+    strengths: [0].concat(S.strengths.filter(v => S.active.has(v)).sort((a, b) => a - b)),
+    prompts: prompts,
+    seed: parseInt($('#fSeed').value) || 1,
+    steps: parseInt($('#fSteps').value) || 8,
+    width: parseInt($('#fW').value) || 768,
+    height: parseInt($('#fH').value) || 768,
+    cfg: parseFloat($('#fCfg').value) || 1.0,
+    sampler: $('#fSampler').value.trim() || 'euler',
+    scheduler: 'simple',
+    // V0.5：用哪张工作流出图。{kind:'engine'} = 工具现场搭；
+    // {kind:'file', path:…} = 内置 json 或用户自己导出的那张
+    workflow: curWorkflow(),
+  };
+  const fl = (S.boot && S.boot.flags) || {};
+  const offline = !!(S.boot && S.boot.comfy_alive === false);
+  if (offline && !fl.comfy_autostart){
+    alert('ComfyUI 没在运行，现在没有出图条件。\n'
+      + '要么先启动 ComfyUI；要么在「模型设置」里勾上「点开始测试时自动启动 ComfyUI」。\n\n'
+      + '（不想出图也可以：去「历史记录」重算评分，或用「导入图片」把已有的图并进来对比。）');
+    return;
+  }
+  if (!spec.loras.length && !spec.combos.length){
+    alert(offline ? 'ComfyUI 没在运行，读不到 LoRA 列表。\n先启动它，列表会自动出现。'
+                  : '请先在第 3 单元选「对比 LoRA」，或在第 5 单元配一组「LoRA 组合」');
+    return;
+  }
+  if (spec.fixed.length > 8){ alert('固定 LoRA 最多 8 个，现在有 ' + spec.fixed.length + ' 个'); return; }
+  if (spec.fixed.some(f => spec.loras.includes(f.name))){
+    alert('同一个 LoRA 不能既固定又参与扫档，请检查固定列表'); return;
+  }
+  if (!spec.prompts.length){ alert('请至少填一条提示词'); return; }
+  $('#grid').innerHTML = '';
+  $('#result').classList.add('hide');
+  $('#bestbox').classList.add('hide');
+
+  if (offline){
+    $('#progtext').textContent = 'ComfyUI 没在运行，正在自动启动…（首次可能要一两分钟）';
+    const ok = await launchComfy();
+    if (!ok){ $('#progtext').textContent = 'ComfyUI 没启动成功，本次未开始'; return; }
+  }
+
+  let r = await post('/api/scan', {spec: spec});
+  if (r.launching){                       // 后端代为启动
+    $('#progtext').textContent = 'ComfyUI 没在运行，正在自动启动…（首次可能要一两分钟）';
+    const ok = await waitComfy();
+    if (!ok){ $('#progtext').textContent = 'ComfyUI 没启动成功，本次未开始'; return; }
+    r = await post('/api/scan', {spec: spec});
+  }
+  if (r.error){ alert(r.error); return; }
+  S.lastRun = r.run_id;
+  poll();
+};
+
+$('#stop').onclick = async () => {
+  if (!confirm('确定要停止当前测试吗？已生成的图会保留。')) return;
+  await post('/api/stop', {});
+  setTimeout(poll, 500);
+};
+
+$('#btnImport').onclick = () => openImport(null);
+$('#impClose').onclick = closeImport;
+$('#impScan').onclick = impScanDir;
+$('#impGo').onclick = doImport;
+$('#impRun').onchange = impLoadRun;
+$('#impModal').onclick = e => { if (e.target.id === 'impModal') closeImport(); };
+
+/* --------------------------------------------------------- LoRA 库 */
+const LIB = {
+  root: '', tree: [], sub: '',
+  inbox: [], inboxSel: new Set(),
+  timer: null, loaded: false,
+  // V0.3：标签。tags 是 rel → 标签信息；filter 是当前按标签筛的类别
+  //
+  // V0.4.3：tags 的初始值从 null 改成 {}。
+  // 原来用 null 表示「还没打过标」，于是 everywhere 都写 `LIB.tags[x] = y`
+  // 就都有隐患 —— 唯一一处真正写入的 applyGradeToRow() 在
+  // 「刚接入库、还没点自动打标」时对 null 取下标赋值，直接抛 TypeError，
+  // 整个函数中断，文件名样式那几行永远走不到。
+  // 症状正是用户报的：右键定了级，**文件名颜色一点不变**；
+  // 先点一次「自动打标」就好了 —— 因为那时 tags 已经是 {}。
+  // 「有没有打过标」改由 scanned 单独表达，不再拿 null 当标记
+  // （null 和 {} 在 JS 里都能当空表用，但只有一个能安全写入）。
+  tags: {}, scanned: false,
+  tagRows: [], tagFilter: '', tagFilterIsLabel: false,
+  // V0.4：品质等级。grades 是等级表（颜色从这里来），tagFilterGrade 独立于
+  // tagFilter —— 一个是「按类型筛」，一个是「按等级筛」，混用会互相清掉。
+  grades: [], tagFilterGrade: '',
+};
+
+const fsz = n => { n = Number(n) || 0;
+  return n >= 1073741824 ? (n / 1073741824).toFixed(2) + ' GB'
+       : n >= 1048576 ? Math.round(n / 1048576) + ' MB'
+       : Math.round(n / 1024) + ' KB'; };
+const fago = ts => { const d = Date.now() / 1000 - (Number(ts) || 0);
+  if (d < 60) return '刚刚';
+  if (d < 3600) return Math.round(d / 60) + ' 分钟前';
+  if (d < 86400) return Math.round(d / 3600) + ' 小时前';
+  return Math.round(d / 86400) + ' 天前'; };
+const libErr = r => (r && r.error) ? r.error : '';
+const kindOf = k => k === 'lora' ? ['b-lora', 'LoRA']
+  : k === 'model_base' ? ['b-base', '完整模型']
+  : k === 'other' ? ['b-base', '伴随文件'] : ['b-unknown', '待确认'];
+
+/* 品质等级 → 内联样式。颜色只从后端 grades 表取（lora_grade.py 是唯一真相），
+   前端不自己抄一份色值。等级表还没拉到就返回空串，退回默认字色。 */
+function gradeOf(key){
+  return (LIB.grades || []).find(g => g.key === key) || null;
+}
+
+/* V0.4.2：确保品质等级表已就位。
+   V0.4.1 的 bug —— 等级表只在 libTagScan() 里赋值，于是「刚接入库、
+   还没打标」时 LIB.grades 是空数组，右键菜单里"品质等级"标题还在、
+   下面一档都没有（实测单选渲染 0 项），必须先点一次「自动打标签」才能用。
+   等级定义是静态的（就4 档），本来就该随启动数据一起到，
+   所以这里先看 boot 缓存，没有再问一次后端。 */
+let _gradesAsked = null;
+function libEnsureGrades(){
+  if ((LIB.grades || []).length) return Promise.resolve(LIB.grades);
+  if ((S.boot && S.boot.grades || []).length){
+    LIB.grades = S.boot.grades;
+    return Promise.resolve(LIB.grades);
+  }
+  // 同一时刻只发一次请求：右键连点十下不该打十次接口
+  if (!_gradesAsked){
+    _gradesAsked = get('/api/lib/grades')
+      .then(r => {
+        const gs = r && r.grades;
+        if (gs && gs.length) LIB.grades = gs;
+        return LIB.grades;
+      })
+      .catch(() => LIB.grades)
+      .finally(() => { _gradesAsked = null; });
+  }
+  return _gradesAsked;
+}
+function gradeStyle(key){
+  const g = gradeOf(key);
+  return g ? `color:${esc(g.fg)};background:${esc(g.bg)}` : '';
+}
+/* 文件名的等级着色：字色用等级色 + 极淡同色底，
+   上品额外加粗（一眼看出最好的那批）。 */
+function nameGradeStyle(key){
+  const g = gradeOf(key);
+  if (!g) return '';
+  return `color:${esc(g.fg)};background:${esc(g.bg)}55`
+       + (key === 'top' ? ';font-weight:700' : '');
+}
+
+function fillDirSelect(sel, keep){
+  const cur = keep != null ? keep : sel.value;
+  sel.innerHTML = (LIB.tree || []).map(t =>
+    `<option value="${esc(t.rel)}">${'　'.repeat(t.depth)}${esc(t.name)}`
+    + (t.count ? `（${t.count}）` : '') + '</option>').join('');
+  if (cur != null) sel.value = cur;
+}
+
+async function libLoad(sub){
+  const s = (sub == null) ? LIB.sub : sub;
+  const r = await get('/api/lib/tree?sub=' + encodeURIComponent(s || ''));
+  const e = libErr(r);
+  if (e){
+    LIB.root = ''; LIB.tree = [];
+    setLibRoot('');
+    // V0.5.2：原来这两句往 #libTree / #libFiles 里写 —— 那两个宿主已经
+    // 撤下页面了，于是「路径填错」时用户会看到一片空白，连一句解释都没有。
+    // 改写到现在真正显示东西的地方：收纳盒容器 + 顶部提示条。
+    const pb = $('#plainBoxes');
+    if (pb){
+      pb.innerHTML = '<div class="empty">' + esc(e)
+        + '<div style="margin-top:8px;font-size:12px">'
+        + '先在左边「模型设置」里填好 ComfyUI 根目录（或 loras 目录）</div></div>';
+    }
+    setLibHint(e);
+    return;
+  }
+  LIB.root = r.root; LIB.tree = r.tree || [];
+  LIB.sub = (r.list && r.list.sub != null) ? r.list.sub : (s || '');
+  setLibRoot(r.root + '　·　' + (r.how || ''));
+  renderFiles();
+  fillDirSelect($('#inboxTarget'));
+}
+
+/* 库根路径显示。宿主要在（V0.5.2 起它挪到了普通丹房），不在就跳过。 */
+function setLibRoot(txt){
+  const n = $('#libRoot');
+  if (n) n.textContent = txt || '';
+}
+
+function renderFiles(){
+  // V0.5.2：这里原来是「目录树 + 文件列表」的渲染器，正文 110 行。
+  // 普通丹房改成「收纳盒」视图后，#libFiles 这个宿主已经不在页面上了，
+  // 正文永远不会执行 —— 已删。
+  //
+  // 但**这个函数名得留着并转交**：全站十几处「筛选项一变就重绘」调的
+  // 都是 renderFiles，与其一处处改（漏掉一个就是「筛选点了没反应」
+  // 这种哑巴 bug），不如让它转一手，全部落到收纳盒视图上。
+  renderPlainBoxes();
+}
+/* 行内标签 chip 的点击行为：类别改判定、标签 × 删除、标签本身筛选。
+   抽出来是因为「点标签改类别」「删自定义标签」这些 V0.3 就有的操作，
+   V0.5.2 把宿主从文件列表换成收纳盒时**必须跟着搬**，不能写死在某一处。 */
+function bindTagChips(box){
+  // V0.3：点标签改类别（点条目本身仍然只做选中）
+  box.querySelectorAll('[data-fix]').forEach(c => c.onclick = e => {
+    e.stopPropagation();
+    openTagPicker(c.dataset.fix, c.textContent.trim());
+  });
+  // 底模标签：只是识别结果展示，暂不支持手动改（后端没有对应接口）。
+  // 之前这里写着「点一下改底模」但根本没绑事件，属于白承诺，改掉。
+  box.querySelectorAll('[data-fixbase]').forEach(c => c.onclick = e => {
+    e.stopPropagation();
+  });
+  // V0.3：自定义标签 —— 点 × 删掉，点标签本身筛选
+  box.querySelectorAll('.gchip.rm').forEach(c => {
+    c.querySelector('.rmx').onclick = async e => {
+      e.stopPropagation();
+      const r = await post('/api/lib/tag_labels',
+                           {rel: nrel(c.closest('[data-rel]').dataset.rel),
+                            label: c.dataset.un, mode: 'remove'});
+      const err = libErr(r);
+      if (err){ alert(err); return; }
+      await libTagScan(true);
+      setLibHint('已删掉标签');
+    };
+    c.onclick = e => {
+      e.stopPropagation();
+      LIB.tagFilterIsLabel = true;
+      const k = c.dataset.myl;
+      LIB.tagFilter = LIB.tagFilter === k ? '' : k;
+      renderTagBar(tagStatsNow());
+      renderFiles();
+    };
+  });
+}
+
+/* 定级之后更新前端缓存并重画。
+   info 是后端 grade_set 一起返回的最新标签信息（可能是 null，
+   表示这个文件已经不在库里了，那就把它从缓存里去掉）。
+
+   V0.4.3 修的坑：这里原来写的是 `LIB.tags[rel] = info`，而 LIB.tags
+   在当时「还没点自动打标」是 null —— 对 null 取下标再赋值抛 TypeError，
+   整个函数在第一行就中断，后面给文件名上色那几行永远走不到。
+   用户看到的现象是「右键定了级、存盘了，文件名却一点不变」，
+   而且必须先点一次「自动打标」才好 —— 因为那时 tags 变成 {} 了。
+   现在 tags 恒为对象，这里可以安全写入。
+
+   V0.5.2 改的：原来定级后只「就地改那一行」，靠异常兜底整库重扫。
+   收纳盒视图的宿主 #libFiles 撤掉之后，就地更新没有对象可改，
+   于是每次定级都变成「抛异常 → catch → 重扫」，功能还活着，
+   但控制台每条都喷一行 warn。现在改成显式重画，路径唯一、没有异常。
+
+   参数 grade 现在不直接用（它已经写进 info 由渲染层读），保留是为了
+   不动三处调用点的签名。 */
+function applyGradeToRow(rels, grade, info){
+  const many = Array.isArray(rels);
+  const list = many ? rels : [rels];
+  // tags / tagRows 都要保证是容器，不能是 null —— 从后台改标签、
+  // 从右键改等级、批量改等级都会走到这里，任何一处假设错位都会
+  // 让整条链路哑掉。
+  if (!LIB.tags || typeof LIB.tags !== 'object') LIB.tags = {};
+  if (!Array.isArray(LIB.tagRows)) LIB.tagRows = [];
+  list.forEach(x => {
+    const rel = nrel(x);
+    // 缓存表先更新，统计条和筛选才有正确数据
+    if (info && !many) LIB.tags[rel] = info;
+    else delete LIB.tags[rel];
+    const n = LIB.tagRows.findIndex(y => nrel(y.rel) === rel);
+    if (info && !many){
+      if (n >= 0) LIB.tagRows[n] = info; else LIB.tagRows.push(info);
+    } else if (n >= 0){
+      LIB.tagRows.splice(n, 1);
+    }
+  });
+  // 右键定级也算「这个文件的标签状态已知」，否则统计条一直显示 0
+  if (info && !many) LIB.scanned = true;
+  // 批量时后端只回 changed 数，没有 info，只能重扫一次拿准确状态
+  const needRescan = many || !info;
+  if (needRescan){ libTagScan(true); return; }
+  // V0.5.2：收纳盒视图里没有「一行 DOM」可以就地改写（宿主 #libFiles 已撤），
+  // 所以统一整块重画。代价是丢掉「只重画一行」的快路径，但这里必须选正确性：
+  // 旧的就地更新一旦和渲染逻辑不同步，症状就是「存盘了、界面不变」——
+  // 这类哑巴 bug 查起来最贵，而 270 个文件重画一次也就几十毫秒。
+  //
+  // 另外**必须显式重画**，不能像改之前那样靠 box 为 null 抛异常被 catch 接住：
+  // 那样每次定级都会往控制台喷一条 warn，真出问题的时候反而淹掉了线索。
+  // 品质丹房那边同一个文件的等级也变了，一起刷新。
+  renderPlainBoxes();
+  renderRooms();
+}
+
+/* ------------------------------------------- V0.3：库内自动标签 + 一键整理 */
+async function libTagScan(keep){
+  const btn = $('#libTags');
+  if (btn){
+    btn.disabled = true; btn.textContent = '正在读文件头…';
+  }
+  setLibHint('正在读文件头…');
+  // 整库扫（sub 传空）：用户在「根目录」点就该看全库的情况
+  const r = await get('/api/lib/tags');
+  if (btn){ btn.disabled = false; btn.textContent = '重新打标签'; }
+  const e = libErr(r);
+  if (e){ alert(e); return; }
+  LIB.tagRows = r.rows || [];
+  if (!keep){ LIB.tagFilter = ''; LIB.tagFilterGrade = ''; }
+  // V0.4：等级表缓存在 LIB 上，颜色和下拉框选项都从它来，
+  // 前端不自己硬编码等级名/颜色。
+  LIB.grades = r.grades || [];
+  const map = {};
+  // V0.4.1：键统一走 nrel()。两边（list / tags）分隔符不一致的话，
+  // 这里就是"一个都查不到"的地方 —— 症状是定级存盘了但界面毫无反应。
+  LIB.tagRows.forEach(x => { map[nrel(x.rel)] = x; });
+  LIB.tags = map;
+  // V0.4.3：tags 恒为对象，「打没打过标」由 scanned 单独表达
+  LIB.scanned = true;
+  renderTagBar(r);
+  renderFiles();
+  const ob = $('#libOrganize');
+  if (ob) ob.disabled = !(r.total > 0);
+  $('#libOrganizeBox').classList.add('hide');
+  if (!keep){
+    setLibHint(r.total
+      ? `已读完 ${r.total} 个 LoRA${r.unknown ? '，其中 ' + r.unknown + ' 个没认出来' : ''}`
+      : '这个库里没有 LoRA 文件');
+  }
+  return r;
+}
+
+/* 库页顶部一行状态提示，避免每次都弹alert 打断操作 */
+let _libHintTimer = null;
+function setLibHint(txt){
+  const n = $('#libHint');
+  if (!n) return;
+  n.textContent = txt || '';
+  clearTimeout(_libHintTimer);
+  if (txt) _libHintTimer = setTimeout(() => { n.textContent = ''; }, 6000);
+}
+
+function renderTagBar(r){
+  const bar = $('#libTagBar');
+  const box = $('#libTagStats');
+  if (!r.total){ bar.classList.add('hide'); return; }
+  bar.classList.remove('hide');
+  const cats = r.categories || [];
+  let h = '';
+  cats.forEach(c => {
+    const n = r.by_cat[c.label] || 0;
+    if (!n) return;
+    h += `<span class="gchip" data-cat="${esc(c.label)}"
+      title="${esc(c.desc)}（点一下只看这类）">${esc(c.label)} <b>${n}</b></span>`;
+  });
+  const unk = r.unknown || 0;
+  if (unk){
+    h += `<span class="gchip unknown" data-cat="未识别"
+      title="线索太少，没敢替你决定类型。点开可以逐个指定。">未识别 <b>${unk}</b></span>`;
+  }
+  const manual = LIB.tagRows.filter(x => x.confidence === 'manual').length;
+  if (manual){
+    h += `<span class="gchip manual" data-cat="__manual"
+      title="你手动指定过类别的">你指定的 <b>${manual}</b></span>`;
+  }
+  const bases = {};
+  LIB.tagRows.forEach(x => { if (x.base_label) bases[x.base_label] = (bases[x.base_label] || 0) + 1; });
+  Object.keys(bases).sort((a, b) => bases[b] - bases[a]).forEach(b => {
+    const d = (S.boot && S.boot.base_desc && S.boot.base_desc[b]) || '';
+    h += `<span class="gchip base" data-base="${esc(b)}"
+      title="${esc(d ? b + '：' + d + '（点一下只看这个底模的）'
+                        : '按底模筛选（点一下只看这个底模的）')}">${esc(b)} <b>${bases[b]}</b></span>`;
+  });
+  // V0.4：品质等级统计。固定按「劣→上」排，颜色直接从后端带过来，
+  // 前端不再自己写一套颜色（两处各写一套，改起来必然对不上）。
+  const grades = r.grades || [];
+  if (grades.length){
+    // V0.4.1：选中态要看得见。用户点过之后 chip 不高亮，
+    // 下面已经换成筛选结果了，但统计条还是老样子，
+    // 看起来像"点了没反应"。这一行就是为了消除这种错觉。
+    const on = LIB.tagFilterGrade;
+    h += `<div class="lblbar"><span class="hint">品质等级</span>`
+       + `<span class="tgtitle">${r.graded
+            ? `已定级 ${r.graded} 个 · 点一下只看该等级（上面的收纳盒会跟着筛）`
+            : '还没定级 · 选中 LoRA 后右键选等级'}</span></div>`;
+    h += `<div class="lblbar" style="border-top:none;padding-top:2px">`
+       + grades.map(g => {
+           const n = (r.by_grade || {})[g.key] || 0;
+           const act = on === g.key;
+           return `<span class="gchip qgrade${act ? ' on' : ''}"
+             data-grade="${esc(g.key)}"
+             style="color:${esc(g.fg)};background:${esc(act ? g.fg : g.bg)};`
+             + `${act ? '' : 'border-color:' + esc(g.fg) + '55;'}${n ? '' : 'opacity:.45'}`
+             + `${act ? 'font-weight:700' : ''}"
+             title="${esc(g.desc)}">${esc(g.label)} <b>${n}</b></span>`;
+         }).join('')
+       + `</div>`;
+  }
+  // 用户自定义标签：单独一段，带一个输入框可以随手加到选中的文件上
+  const mine = r.by_label || {};
+  const myKeys = Object.keys(mine).sort((a, b) => mine[b] - mine[a]);
+  h += `<div class="lblbar"><span class="hint">我的标签</span>`
+     + `<input id="libLabelInp" class="lblinp" placeholder="输入标签后回车" `
+     + `maxlength="12" title="给选中的 LoRA 加标签；一个都没选就加到当前显示的这批上">`
+     + `<span class="tgtitle">${myKeys.length
+          ? '共 ' + myKeys.length + ' 个' : '还没加过标签'}</span></div>`;
+  if (myKeys.length){
+    h += `<div class="lblbar" style="border-top:none;padding-top:2px">`
++ myKeys.map(k => `<span class="gchip mine" data-mlabel="${esc(k)}"
+           title="你自己加的标签：${esc(k)}（左键：只看带这个标签的；右键：删掉这个标签）"
+           >${esc(k)} <b>${mine[k]}</b></span>`).join('')
+       + `</div>`;
+  }
+  box.innerHTML = h;
+  box.querySelectorAll('[data-cat]').forEach(n => n.onclick = () => {
+    LIB.tagFilterIsLabel = false;
+    LIB.tagFilter = LIB.tagFilter === n.dataset.cat ? '' : n.dataset.cat;
+    renderTagBar(tagStatsNow()); renderFiles();
+  });
+  box.querySelectorAll('[data-base]').forEach(n => n.onclick = () => {
+    LIB.tagFilterIsLabel = false;
+    LIB.tagFilter = LIB.tagFilter === n.dataset.base ? '' : n.dataset.base;
+    renderTagBar(tagStatsNow()); renderFiles();
+  });
+  box.querySelectorAll('[data-mlabel]').forEach(n => n.onclick = () => {
+    const k = n.dataset.mlabel;
+    LIB.tagFilterIsLabel = true;
+    LIB.tagFilter = (LIB.tagFilterIsLabel && LIB.tagFilter === k) ? '' : k;
+    renderTagBar(tagStatsNow()); renderFiles();
+  });
+  // 「我的标签」现在也能删：左键=筛选，右键=删。
+  // 之前只能加不能删，用户攒了一堆标签清不掉 —— 改标签统计条的语义要写明，
+  // 否则右键误触会静默删数据。
+  box.querySelectorAll('[data-mlabel]').forEach(n => n.oncontextmenu = e => {
+    e.preventDefault();
+    // 要 return：删标签是异步的（要等后端 + 刷新），
+    // 不return 的话调用方 await 不到，测试会误判成"没删掉"。
+    return removeLabelEverywhere(n.dataset.mlabel);
+  });
+  box.querySelectorAll('[data-grade]').forEach(n => n.onclick = () => {
+    LIB.tagFilterIsLabel = false;
+    LIB.tagFilterGrade = (LIB.tagFilterGrade === n.dataset.grade) ? '' : n.dataset.grade;
+    LIB.tagFilter = '';
+    // 用 tagStatsNow() 重算，不要复用外面那个 r：
+    // 那个是上次整库扫描的快照，定级之后数字已经过期了，
+    // 统计条会显示旧计数，看着像筛选没生效。
+    renderTagBar(tagStatsNow()); renderFiles();
+    const g = gradeOf(LIB.tagFilterGrade);
+    if (g) setLibHint(`只看「${g.label}」· 全库 `
+      + (LIB.tagRows || []).filter(x => x.grade === g.key).length + ' 个');
+  });
+  const li = $('#libLabelInp');
+  if (li) li.onkeydown = e => {
+    if (e.key === 'Enter'){ e.preventDefault(); addLabelsToSelection(li.value); }
+  };
+}
+
+/* 给选中的 LoRA 批量加自定义标签。一个都没选就作用于**当前显示的**全部
+   LoRA（「这批我都标成待测」很常用，不该逼用户一个个点）。 */
+async function addLabelsToSelection(raw){
+  const parts = String(raw || '').split(/[,，、\s]+/)
+    .map(s => s.trim()).filter(Boolean);
+  if (!parts.length) return;
+  // V0.5.2：选择模型跟着视图一起换了 —— 原来读的是老文件列表的勾选框
+  // （LIB.fileSel），收纳盒视图改用 PLAINSEL 后那个老集合恒为空，
+  // 于是这里会静默地一路走兜底分支，变成「给整个目录加标签」。
+  //
+  // 兜底也从「当前目录的全部文件」改成「当前收纳盒里显示的 LoRA」：
+  // 收纳盒本来就是全库摊开按目录分盒的，没有「当前目录」这回事了。
+  let rels = [...PLAINSEL];
+  if (!rels.length){
+    rels = PLAINDIRS.flatMap(d => (d.items || []).map(x => nrel(x.rel)));
+    if (!rels.length){ alert('现在没有可加标签的 LoRA'); return; }
+    if (!confirm(`当前显示 ${rels.length} 个 LoRA，都加上标签「${parts.join('、')}」？`
+                 + `\n\n想只标一部分的话，先在收纳盒里点选几个再输入。`)) return;
+  }
+  let ok = 0, errs = [];
+  for (const lb of parts){
+    const r = await post('/api/lib/tag_labels',
+                         {rels, label: lb, mode: 'add'});
+    const e = libErr(r);
+    if (e){ errs.push(lb + '：' + e); continue; }
+    ok += r.changed || 0;
+  }
+  if (errs.length) alert(errs.join('\n'));
+  await libTagScan(true);
+  const li = $('#libLabelInp');
+  if (li) li.value = '';
+  setLibHint(ok ? `已给 ${ok} 个文件加上标签` : '没有改动');
+}
+
+/* 一个 LoRA 上的标签 chip：类别 + 底模 + 我的标签 + 品质等级徽章。
+   低置信 / 手动指定的类别用不同颜色区分。 */
+function tagChips(info){
+  if (!info) return '';
+  let h = '';
+  const cls = info.confidence === 'manual' ? 'manual'
+            : info.cat === 'unknown' ? 'unknown'
+            : info.confidence === 'low' ? 'low' : '';
+  // 注意：why 文本后端已经翻成中文了，这里直接显示，不要再自己翻译一遍
+  const tip = info.confidence === 'manual' ? '你手动指定的类别'
+            : (info.why || '') + '（点一下改类别）';
+  h += `<span class="gchip ${cls}" data-fix="${esc(info.rel)}"
+    title="${esc(tip)}">${esc(info.cat_label)}</span>`;
+  if (info.adult){
+    h += `<span class="gchip adult" title="成人向内容，用法和能不能分享都和人像 LoRA 不一样，注意一下">成人向</span>`;
+  }
+  if (info.base_label){
+    const bd = (S.boot && S.boot.base_desc && S.boot.base_desc[info.base_label]) || '';
+    h += `<span class="gchip base" data-fixbase="${esc(info.rel)}"
+      title="认出的大模型：${esc(info.base_label)}`
+      + `${bd ? '（' + esc(bd) + '）' : ''}。这是自动识别的结果，暂不能手动改`
+      + `">${esc(info.base_label)}</span>`;
+  }
+  // 用户自己加的标签：点 × 删掉（点标签本身是筛选）
+  // data-myl 必须挂在 .gchip.rm 上——JS 读的是 c.dataset.un，
+  // 挂到内层 <b> 上会导致删标签时传空字符串（实测报「标签不能是空的」）
+  (info.labels || []).forEach((lb, i) => {
+    h += `<span class="gchip rm" data-myl="${esc(lb)}" data-un="${esc(lb)}" data-i="${i}"
+      title="你自己加的标签：${esc(lb)}。点标签筛选，点 × 删除">${esc(lb)}`
+      + `<b class="rmx">×</b></span>`;
+  });
+  // 品质等级：只画一个静态徽章，**不再放等级下拉框**。
+  // 一行里塞个 select 太挤，而且同一个盒里的行常常是同一个答案；
+  // 等级颜色直接用该等级自己的 color/background，没定级就是灰色的「未定级」。
+  // 改等级走两条路：右键这个 LoRA → 品质等级；或底部选中条的四个按钮。
+  // 这两条路都通到 /api/lib/grade_set，和以前的下拉框是同一个接口。
+  const gs = LIB.grades || [];
+  const cur = gs.find(g => g.key === info.grade);
+  h += `<span class="gchip qgrade"
+    title="${esc(cur ? cur.label + '：' + cur.desc + '（右键这个 LoRA 可以改等级）'
+                      : '还没定级（右键这个 LoRA 可以定级）')}"
+    style="${cur ? `color:${cur.fg};background:${cur.bg}` : ''}"
+    >${esc(cur ? cur.label : '未定级')}</span>`;
+  return h;
+}
+
+/* ------------------------------------------------- V0.4：文件右键菜单 */
+/* 删一个自定义标签。范围三选一，从严到宽：
+   1. 点了标签统计条 → 只删当前选中的文件（没选中就问要不要删整个库）
+   2. 右键统计条上的标签 → 删整个库里所有文件的这个标签（不可撤销，先确认）
+   V0.3 之前只有「加」，没有「删」，标签攒多了就只能一个个文件点 × 删。 */
+async function removeLabelEverywhere(lb){
+  // 范围按「有没有勾选文件」自动决定，并**在确认框里写清删几个**：
+  // 只勾了一部分却说"删全部"，或者反过来，是这类批量操作最容易出的错。
+  const all = (LIB.tagRows || []).filter(x => (x.labels || []).indexOf(lb) >= 0);
+  if (!all.length){ alert(`库里已经没有「${lb}」这个标签了`); return; }
+  // V0.5.2：同上，改读 PLAINSEL —— 读老集合的话永远走「全库删」那一支。
+  const sel = [...PLAINSEL].filter(r =>
+    (LIB.tags[r] || {}).labels && LIB.tags[r].labels.indexOf(lb) >= 0);
+  let rels;
+  if (sel.length){
+    if (!confirm(`从选中的 ${sel.length} 个 LoRA 上删掉标签「${lb}」？\n\n`
+                 + `库里另外还有 ${all.length - sel.length} 个带着这个标签，`
+                 + `不在这次删除范围内。`)) return;
+    rels = sel;
+  } else {
+    if (!confirm(`当前没有选中 LoRA。\n要把库里 ${all.length} 个文件上的`
+                 + `「${lb}」标签全部删掉吗？\n\n删了要重新加，撤不回来。`)) return;
+    rels = all.map(x => x.rel);
+  }
+  const r = await post('/api/lib/tag_labels',
+                       {rels, label: lb, mode: 'remove'});
+  const e = libErr(r);
+  if (e){ alert(e); return; }
+  // 删完如果正按这个标签筛着，必须把筛选清掉，否则列表空了看起来像坏了
+  if (LIB.tagFilterIsLabel && LIB.tagFilter === lb){
+    LIB.tagFilter = ''; LIB.tagFilterIsLabel = false;
+  }
+  await libTagScan(true);
+  setLibHint(r.changed
+    ? `已从 ${r.changed} 个文件删掉「${lb}」`
+    : '选中的文件本来就没有这个标签');
+}
+
+let CTXMENU = null;
+// V0.4.2：openFileMenu 变成异步（要先等等级表）之后用来防重复弹出的令牌
+let _menuToken = 0;
+function closeFileMenu(){
+  if (CTXMENU){
+    // 先解绑再删元素。少了这一步，点外面关闭会把 mousedown/keydown 监听
+    // 留在 document 上，越积越多，之后每次右键都会多跑几个空回调。
+    if (CTXMENU._cleanup) CTXMENU._cleanup();
+    CTXMENU.remove();
+  }
+  CTXMENU = null;
+}
+/* 打开文件操作菜单。rels 允许传多个 —— 右键勾选中的文件时按批量处理。 */
+async function openFileMenu(rel, x, y, rels){
+  // 菜单现在是异步构建的（要先 await 等级表），所以两次快速右键可能
+  // 都在await 上排队。用一个自增令牌让后来者作废前一个，
+  // 否则会出现「弹了两次菜单、后弹的那个盖在先弹的上面」。
+  const token = ++_menuToken;
+  closeFileMenu();
+  // V0.4.2：先把等级表要到手再渲染菜单。少了这一步，「刚接入库、
+  // 还没打标」时下面那段 gs.map(...) 是空数组 —— 菜单照弹，
+  // 「品质等级」标题也在，下面一档都没有，用户看着就像功能坏了。
+  await libEnsureGrades();
+  if (token !== _menuToken) return;          // 已经被后一次右键接管了
+  const list = ((rels && rels.length) ? rels : [rel]).map(nrel);
+  const one = list.length === 1;
+  const infos = list.map(r => (LIB.tags || {})[r]).filter(Boolean);
+  const cur = one && infos[0] ? infos[0].grade || '' : '';
+  const gs = LIB.grades || [];
+  // 多选时只有全部同级才显示对勾，否则不显示 —— 显示一个"部分选中"的假象更糟
+  const same = one ? '' : (infos.length && infos.every(i => (i.grade || '') === infos[0].grade || !i.grade)
+      ? infos[0].grade || '' : '');
+  const curK = one ? cur : same;
+
+  const d = document.createElement('div');
+  // 必须带 on：CSS 里 .ctxmenu 默认 display:none，靠 .on 才显示。
+  // 少了这个 class 菜单节点会正常创建、事件也绑好，但用户就是看不见 ——
+  // 单元测试只查"节点是否存在"抓不到这种错，必须查可见性。
+  // 也要在测量尺寸之前就带上：display:none 时getBoundingClientRect()
+  // 全返回 0，下面的贴边翻转会算错位置。
+  d.className = 'ctxmenu on';
+  d.id = 'libCtx';
+  const title = one ? (rel.split('/').pop() || rel) : list.length + ' 个文件';
+  let h = `<div class="cmhead"><b>${esc(title)}</b>`
+    + `<span>${one ? '品质等级与标签' : '批量操作：品质等级与标签'}</span></div>`;
+
+  // ---- 品质等级
+  h += '<div class="cmsub">品质等级</div>';
+  h += gs.map(g => `<div class="cmitem" data-g="${esc(g.key)}">
+    <span class="sw" style="background:${esc(g.bg)};border-color:${esc(g.fg)}"></span>
+    <span class="lb" style="color:${esc(g.fg)};font-weight:600">${esc(g.label)}</span>
+    <span class="dsc">${esc(g.desc)}</span>
+    <span class="tick">${curK === g.key ? '✓' : ''}</span></div>`).join('');
+  // 「删除品质标签」这一项：单选时按当前状态说话（没定级就显示"未定级"并打勾），
+  // 批量时固定说「清空这 N 个的品质标签」—— 批量菜单里出现"未定级✓"
+  // 会让人以为这批本来就没定级，其实可能只是等级不一致。
+  const allSame = one || (infos.length && infos.every(i =>
+      (i.grade || '') === (infos[0] || {}).grade));
+  const has = infos.some(i => i.grade);
+  h += `<div class="cmitem${(allSame && curK) ? ' danger' : ''}" data-g="">
+    <span class="sw" style="background:#fff;border-color:#dcdde3"></span>
+    <span class="lb">${one
+      ? (cur ? '删除品质标签' : '未定级')
+      : `清空这 ${list.length} 个的品质标签`}</span>
+    <span class="dsc">${one || allSame ? '' : '当前等级不一致'}</span>
+    ${one && !cur ? '<span class="tick">✓</span>' : ''}</div>`;
+
+  // ---- 我的标签（可单个删）
+  h += '<div class="cmsep"></div><div class="cmsub">我的标签</div>';
+  const labs = one ? ((infos[0] || {}).labels || []) : [...new Set(
+    infos.flatMap(i => (i.labels || [])))];
+  if (labs.length){
+    h += labs.map(lb => `<div class="cmitem" data-un="${esc(lb)}">
+      <span class="lb">${esc(lb)}</span>
+      <span class="dsc">${one ? '' : '从这里移除'}</span>
+      <span class="x" title="删除这个标签">×</span></div>`).join('');
+  } else {
+    h += `<div class="cmempty">${one ? '这个文件还没有自定义标签'
+                                    : '这些文件都没有自定义标签'}</div>`;
+  }
+  // 批量时给「整批清空标签」——逐个点太累
+  if (!one){
+    h += `<div class="cmitem danger" data-unall="1"><span class="lb">清空这 ${list.length} 个文件的全部标签</span></div>`;
+  }
+  // ---- 随手加标签
+  h += `<div class="cmin"><input id="ctxLabelInp" maxlength="12"
+    placeholder="输入标签后回车"><button data-addlabel="1">添加</button></div>`;
+
+  d.innerHTML = h;
+  document.body.appendChild(d);
+  CTXMENU = d;
+  // 贴边翻转：菜单比视口高/宽时向内收，否则会被裁掉
+  const r = d.getBoundingClientRect();
+  const px = Math.min(x, window.innerWidth - r.width - 10);
+  const py = Math.min(y, window.innerHeight - r.height - 10);
+  d.style.left = Math.max(6, px) + 'px';
+  d.style.top = Math.max(6, py) + 'px';
+
+  // 关闭：点外面 / 按 Esc / 滚轮 / 窗口变化。任何一种都能关掉，
+  // 少一种就可能留下一个"关不掉的面板"，比不做还糟。
+  setTimeout(() => {
+    document.addEventListener('mousedown', onAway, true);
+    document.addEventListener('keydown', onEsc);
+    window.addEventListener('blur', closeFileMenu);
+  }, 0);
+  function onAway(e){ if (!d.contains(e.target)) closeFileMenu(); }
+  function onEsc(e){ if (e.key === 'Escape') closeFileMenu(); }
+  d._cleanup = () => {
+    document.removeEventListener('mousedown', onAway, true);
+    document.removeEventListener('keydown', onEsc);
+    window.removeEventListener('blur', closeFileMenu);
+  };
+
+  const grade = async g => {
+    closeFileMenu();
+    const one = list.length === 1;
+    const r2 = one
+      ? await post('/api/lib/grade_set', {rel: list[0], grade: g})
+      : await post('/api/lib/grade_set', {rels: list, grade: g});
+    const err = libErr(r2);
+    if (err){ alert(err); return; }
+    const g2 = gs.find(x => x.key === g);
+    // V0.4.1：单选走后端带回的 info 就地更新（文件名立刻变色）；
+    // 批量没有 info，退回整库重扫。
+    if (one) applyGradeToRow(list[0], g, r2.info);
+    else await libTagScan(true);
+    if (!(one && r2.info)) renderTagBar(tagStatsNow());
+    setLibHint(g ? `已把 ${list.length} 个文件定为「${g2 ? g2.label : g}」`
+                : `已删除 ${list.length} 个文件的品质标签`);
+  };
+  const dropLabel = async lb => {
+    closeFileMenu();
+    let ok = 0, errs = [];
+    for (const rl of list){
+      const r2 = await post('/api/lib/tag_labels',
+                            {rel: rl, label: lb, mode: 'remove'});
+      const e = libErr(r2);
+      if (e){ errs.push(e); continue; }
+      ok++;
+    }
+    if (errs.length) alert(errs.join('\n'));
+    await libTagScan(true);
+    setLibHint(ok ? `已从 ${ok} 个文件删掉标签「${lb}」` : '没有改动');
+  };
+  const clearAll = async () => {
+    const all = [...new Set(infos.flatMap(i => (i.labels || [])))];
+    if (!all.length){ closeFileMenu(); return; }
+    if (!confirm(`把这 ${list.length} 个文件的 ${all.length} 个标签全删掉？\n`
+                 + all.join('、') + `\n\n删了要重新加，撤不回来。`)) return;
+    closeFileMenu();
+    let ok = 0, errs = [];
+    for (const lb of all){
+      const r2 = await post('/api/lib/tag_labels',
+                            {rels: list, label: lb, mode: 'remove'});
+      const e = libErr(r2);
+      if (e){ errs.push(lb + '：' + e); continue; }
+      ok += r2.changed || 0;
+    }
+    if (errs.length) alert(errs.join('\n'));
+    await libTagScan(true);
+    setLibHint(ok ? `已清掉 ${ok} 个文件上的标签` : '没有改动');
+  };
+  d.querySelectorAll('[data-g]').forEach(n =>
+    n.onclick = () => grade(n.dataset.g));
+  d.querySelectorAll('[data-un]').forEach(n =>
+    n.onclick = () => dropLabel(n.dataset.un));
+  const unall = d.querySelector('[data-unall]');
+  if (unall) unall.onclick = clearAll;
+  const inp = d.querySelector('#ctxLabelInp');
+  const addIt = async () => {
+    const lb = (inp.value || '').trim();
+    if (!lb) return;
+    const r2 = list.length === 1
+      ? await post('/api/lib/tag_labels', {rel: list[0], label: lb, mode: 'add'})
+      : await post('/api/lib/tag_labels', {rels: list, label: lb, mode: 'add'});
+    const err = libErr(r2);
+    if (err){ alert(err); return; }
+    inp.value = '';
+    await libTagScan(true);
+    setLibHint(`已给 ${list.length} 个文件加上「${lb}」`);
+  };
+  if (inp){
+    inp.onkeydown = e => { if (e.key === 'Enter'){ e.preventDefault(); addIt(); } };
+    inp.focus();
+  }
+  const btn = d.querySelector('[data-addlabel]');
+  if (btn) btn.onclick = addIt;
+}
+
+/* 单个文件加自定义标签（点标签行的空白处 / 用这个按钮） */
+async function addLabelToOne(rel, raw){
+  const lb = String(raw || '').trim();
+  if (!lb || !rel) return;
+  const r = await post('/api/lib/tag_labels', {rel, label: lb, mode: 'add'});
+  const e = libErr(r);
+  if (e){ alert(e); return; }
+  await libTagScan(true);
+  setLibHint('已加上标签「' + lb + '」');
+}
+
+async function setTag(rel, cat){
+  const r = await post('/api/lib/tag_set', {rel, cat});
+  const e = libErr(r);
+  if (e){ alert(e); return; }
+  if (r.info) LIB.tags[rel] = r.info;
+  renderFiles();
+  const n = LIB.tagRows.findIndex(x => x.rel === rel);
+  if (n >= 0 && r.info) LIB.tagRows[n] = r.info;
+  renderTagBar(tagStatsNow());
+}
+
+const countBy = (arr, k) => arr.reduce((m, x) =>
+  (m[x[k]] = (m[x[k]] || 0) + 1, m), {});
+
+/* 从已缓存的 tagRows 重算标签统计（改完标签本地刷新时用，不必再问后端一次）。
+   自己数一遍，不依赖后面才定义的 countBy —— 这里的调用点比它定义得更早。 */
+function tagStatsNow(){
+  const rows = LIB.tagRows || [];
+  const byCat = {}, byLabel = {}, byGrade = {};
+  (LIB.grades || []).forEach(g => { byGrade[g.key] = 0; });
+  rows.forEach(x => {
+    byCat[x.cat_label] = (byCat[x.cat_label] || 0) + 1;
+    (x.labels || []).forEach(lb => {
+      byLabel[lb] = (byLabel[lb] || 0) + 1;
+    });
+    // 定级分布固定按劣→上补零，不能靠数据碰巧出现的顺序
+    if (x.grade && x.grade in byGrade) byGrade[x.grade] += 1;
+  });
+  return {
+    total: rows.length,
+    categories: (S.boot && S.boot.tag_categories) || [],
+    by_cat: byCat,
+    by_label: byLabel,
+    by_grade: byGrade,
+    grades: LIB.grades || [],
+    graded: rows.filter(x => !!x.grade).length,
+    unknown: rows.filter(x => x.cat === 'unknown').length,
+  };
+}
+
+/* 改类别：点 chip 弹一个小选择器，不打断整理的节奏 */
+function openTagPicker(rel, cur){
+  const cats = (S.boot && S.boot.tag_categories) || [];
+  const old = $('#tagPick');
+  if (old) old.remove();
+  const d = document.createElement('div');
+  d.className = 'modal';
+  d.id = 'tagPick';
+  d.innerHTML = `<div class="mbox" style="max-width:420px">
+    <div class="mhead"><span>这是什么类型的 LoRA</span><x>×</x></div>
+    <div class="mbody">
+      <p class="tip" style="margin-top:0">选完会记住，以后打开这个库都按你标的算。</p>
+      <div class="tagstat" style="margin-bottom:11px">
+        ${cats.map(c => `<span class="gchip${c.label === cur ? ' manual' : ''}"
+          data-pick="${esc(c.key)}" title="${esc(c.desc)}"
+          style="font-size:12px;padding:4px 11px;cursor:pointer"
+          >${esc(c.label)}</span>`).join('')}
+        <span class="gchip unknown" data-pick="unknown"
+          style="font-size:12px;padding:4px 11px;cursor:pointer">不确定，还原自动判定</span>
+      </div>
+    </div></div>`;
+  document.body.appendChild(d);
+  const close = () => d.remove();
+  d.querySelector('x').onclick = close;
+  d.onclick = ev => { if (ev.target === d) close(); };
+  d.querySelectorAll('[data-pick]').forEach(n => n.onclick = () => {
+    setTag(rel, n.dataset.pick); close();
+  });
+}
+
+/* ---- 一键整理：先出计划给用户看，确认了才真搬 ---- */
+async function libOrganizePlan(mode){
+  const box = $('#libOrganizeBox');
+  box.classList.remove('hide');
+  box.innerHTML = '<div class="organize"><h4>正在算整理计划…</h4></div>';
+  mode = mode || 'base_cat';      // 调用方可能不传（默认大模型/类别）
+  const r = await get('/api/lib/organize?mode=' + encodeURIComponent(mode));
+  const e = libErr(r);
+  if (e){ box.innerHTML = '<div class="organize"><h4>算不出来</h4>' + esc(e) + '</div>'; return; }
+  const plan = r.plan || [], buckets = r.buckets || [];
+  if (!plan.length){
+    const sk = r.skipped || [];
+    const inPlace = sk.filter(x => /已经在/.test(x.reason)).length;
+    const unknown = sk.filter(x => /认不出/.test(x.reason)).length;
+    const noLabel = sk.filter(x => /没加自定义标签/.test(x.reason)).length;
+    if (mode === 'label' && noLabel){
+      box.innerHTML = `<div class="organize"><h4>没有需要搬的文件</h4>
+        <div>有 <b>${noLabel}</b> 个文件没加自定义标签，所以没动它们。</div>
+        <p class="tip" style="margin:8px 0 0">先在上方「我的标签」那里
+        选好文件、输入标签再回车，这一步就会把它们分进你建的目录。</p></div>`;
+      return;
+    }
+    box.innerHTML = `<div class="organize"><h4>没有需要搬的文件</h4>
+      <div>这个库已经是有条理的：<b>${inPlace}</b> 个已经在合适的目录里`
+      + (unknown ? `，<b>${unknown}</b> 个认不出类型所以没动` : '')
+      + `。</div>
+      <p class="tip" style="margin:8px 0 0">想重新分一遍？先点上面的「重新打标签」，`
+      + `或者点文件行上的标签手动改类别。</p></div>`;
+    return;
+  }
+  let h = `<div class="organize"><h4>整理计划
+    <span class="cnt">共 ${plan.length} 个文件 · 会建 ${buckets.length} 个目录</span></h4>`;
+  h += '<div style="margin-bottom:9px">按标签放进下面这些目录：</div>';
+  h += buckets.map(b => `<div class="obucket"><span class="od">${esc(b.dest)}/</span>
+    <span class="cnt">${b.count} 个${b.low_conf
+      ? ` · <span style="color:var(--warn)">${b.low_conf} 个待确认</span>` : ''}</span></div>`).join('');
+  h += `<div class="oact">
+    <label class="chk" style="display:flex;align-items:center;gap:6px;font-size:12px">
+      <input type="checkbox" id="orgLow"> 连「待确认」的一起搬</label>
+    <button id="orgRun" class="btn primary sm">确认搬 ${plan.length} 个文件</button>
+    <button id="orgCancel" class="btn ghost sm">算了</button></div>`;
+  h += '<p class="tip" style="margin:9px 0 0">移动不覆盖：目标已有同名文件会自动改名。'
+    + 'ComfyUI 正占用的文件会跳过并告诉你。</p></div>';
+  box.innerHTML = h;
+  $('#orgCancel').onclick = () => box.classList.add('hide');
+  $('#orgRun').onclick = async () => {
+    const onlyHigh = !$('#orgLow').checked;
+    const btn = $('#orgRun');
+    btn.disabled = true; btn.textContent = '搬移中…';
+    const rr = await post('/api/lib/organize_run', {mode, only_high: onlyHigh});
+    const e2 = libErr(rr);
+    if (e2){ alert(e2); btn.disabled = false; btn.textContent = '重试'; return; }
+    if (rr.tree) LIB.tree = rr.tree;
+    box.innerHTML = `<div class="organize"><h4>搬完了</h4>
+      <div>成功 <b>${rr.moved}</b> 个${(rr.failed || []).length
+        ? `，失败 <b style="color:var(--bad)">${rr.failed.length}</b> 个` : ''}。</div>
+      ${(rr.failed || []).length ? '<div style="margin-top:7px">'
+        + rr.failed.slice(0, 8).map(f =>
+          `<div class="cnt">· ${esc(f.name)} — ${esc(f.error)}</div>`).join('')
+        + '</div>' : ''}
+      <div class="oact"><button id="orgClose" class="btn ghost sm">知道了</button></div>
+      </div>`;
+    $('#orgClose').onclick = () => { box.classList.add('hide'); libLoad(); };
+    libTagScan();
+  };
+}
+
+function syncLibBtns(){
+  // V0.5.2：这些按钮现在服务的是普通丹房的收纳盒选中（PLAINSEL），
+  // 不再是老的 LIB.fileSel —— 那个宿主已经不在页面上了。
+  const n = PLAINSEL.size;
+  const rn = $('#libRename'), mv = $('#libMoveTo'), dl = $('#libDel');
+  if (rn) rn.disabled = n !== 1;
+  if (mv) mv.disabled = n === 0;
+  if (dl) dl.disabled = n === 0;
+}
+
+/* 「按标签一键整理」：先问清楚按什么分，再出计划 */
+function openOrganizeDialog(){
+  if (!LIB.scanned || !LIB.tagRows.length){
+    alert('先点「自动打标签」，让工具先认清每个文件是什么类型。');
+    return;
+  }
+  const old = $('#orgPick');
+  if (old) old.remove();
+  const d = document.createElement('div');
+  d.className = 'modal'; d.id = 'orgPick';
+  d.innerHTML = `<div class="mbox" style="max-width:520px">
+    <div class="mhead"><span>按标签一键整理</span><x>×</x></div>
+    <div class="mbody">
+      <p class="tip" style="margin-top:0">选你想要的目录结构，点下一步会先给你看
+        「谁搬到哪」，确认了才真搬。</p>
+      <div style="display:grid;gap:8px;margin-top:4px">
+        <label class="radio" style="align-items:flex-start">
+          <input type="radio" name="orgMode" value="base_cat" checked>
+          <span><b>大模型 / 类别</b><br>
+            <span class="tip" style="margin:2px 0 0">Krea2/人像、Krea2/风格…
+            同一底模的 LoRA 归在一起，最不容易混。</span></span></label>
+        <label class="radio" style="align-items:flex-start">
+          <input type="radio" name="orgMode" value="cat">
+          <span><b>只按类别</b><br>
+            <span class="tip" style="margin:2px 0 0">人像/、风格/、物品/… 不分底模。</span></span></label>
+        <label class="radio" style="align-items:flex-start">
+          <input type="radio" name="orgMode" value="base">
+          <span><b>只按大模型</b><br>
+            <span class="tip" style="margin:2px 0 0">只分 Krea2/、FLUX/…，类别不动。</span></span></label>
+        <label class="radio" style="align-items:flex-start">
+          <input type="radio" name="orgMode" value="label">
+          <span><b>按我的自定义标签</b><br>
+            <span class="tip" style="margin:2px 0 0">搬到你自己的分类里
+            （用第一个自定义标签当目录名）。没加标签的文件不会动。</span></span></label>
+      </div>
+      <div class="oact" style="border-top:1px solid var(--line);margin-top:13px">
+        <button id="orgGo" class="btn primary sm">看整理计划</button>
+        <button id="orgNo" class="btn ghost sm">取消</button></div>
+    </div></div>`;
+  document.body.appendChild(d);
+  const close = () => d.remove();
+  d.querySelector('x').onclick = close;
+  d.onclick = ev => { if (ev.target === d) close(); };
+  $('#orgNo').onclick = close;
+  // **必须先取 mode 再关弹窗**：close() 会把DOM 移除，之后再
+  // `$('input[name=orgMode]:checked')` 永远读不到值，用户选的整理方式
+  // 会被静默忽略、一律按默认的「大模型/类别」执行。
+  $('#orgGo').onclick = () => {
+    const mode = ($('input[name=orgMode]:checked') || {}).value || 'base_cat';
+    close();
+    libOrganizePlan(mode);
+  };
+}
+
+/* ---- 收件箱 ---- */
+async function inboxScan(){
+  const btn = $('#inboxScan');
+  btn.disabled = true; btn.textContent = '扫描中…';
+  $('#inboxList').innerHTML = '<div class="empty">扫描中…</div>';
+  const r = await get('/api/inbox/scan');
+  btn.disabled = false; btn.textContent = '扫描下载目录';
+  const e = libErr(r);
+  if (e){ $('#inboxList').innerHTML = '<div class="empty">' + esc(e) + '</div>';
+          $('#inboxMeta').textContent = ''; return; }
+  LIB.inbox = r.items || [];
+  LIB.inboxSel.clear();
+  $('#inboxMeta').textContent = '扫到 ' + LIB.inbox.length + ' 个';
+  if (r.errors && r.errors.length) alert(r.errors.join('\n'));
+  renderInbox();
+}
+
+function renderInbox(){
+  const box = $('#inboxList');
+  const only = $('#inboxOnlyLora').checked;
+  const list = only ? LIB.inbox.filter(x => x.kind === 'lora') : LIB.inbox;
+  if (!LIB.inbox.length){
+    box.innerHTML = '<div class="empty">下载目录里没有模型文件</div>';
+    syncInboxBtn(); return;
+  }
+  if (!list.length){
+    box.innerHTML = '<div class="empty">没有判定为 LoRA 的文件'
+      + '（勾掉上面的筛选可以看全部）</div>'; syncInboxBtn(); return;
+  }
+  box.innerHTML = list.map(f => {
+    const k = kindOf(f.kind);
+    const tags = (f.tags || []).slice(0, 8)
+      .map(t => `<span class="tag">${esc(t)}</span>`).join('');
+    return `<div class="ibrow" data-p="${esc(f.path)}">
+      <input type="checkbox" ${LIB.inboxSel.has(f.path) ? 'checked' : ''}>
+      <div class="ibmain">
+        <div class="ibname">${esc(f.name)}</div>
+        <div class="ibsub">
+          <span class="badge ${k[0]}">${k[1]}</span>
+          <span>${fsz(f.size)}</span>
+          ${f.rank ? `<span>rank ${esc(f.rank)}</span>` : ''}
+          ${f.base ? `<span>${esc(f.base)}</span>` : ''}
+          <span>${esc(fago(f.mtime))}</span>
+          ${f.busy ? '<span class="badge b-warn">可能还在下载</span>' : ''}
+          ${f.kind === 'lora' ? '' : `<span>${esc(f.reason)}</span>`}
+        </div>
+        ${tags ? `<div class="ibsub">${tags}</div>` : ''}
+      </div></div>`;
+  }).join('');
+  box.querySelectorAll('[data-p]').forEach(n => {
+    const cb = n.querySelector('input');
+    const flip = () => {
+      cb.checked ? LIB.inboxSel.add(n.dataset.p) : LIB.inboxSel.delete(n.dataset.p);
+      n.classList.toggle('on', cb.checked); syncInboxBtn();
+    };
+    cb.onchange = flip;
+    n.onclick = e => { if (e.target !== cb && e.target.tagName !== 'INPUT'){
+      cb.checked = !cb.checked; flip(); } };
+  });
+  syncInboxBtn();
+}
+
+function syncInboxBtn(){
+  const n = LIB.inboxSel.size;
+  const b = $('#inboxMove');
+  b.disabled = n === 0 || !LIB.root;
+  b.textContent = n ? `移动选中的 ${n} 个` : '移动选中的';
+}
+
+async function inboxMove(){
+  const paths = [...LIB.inboxSel];
+  if (!paths.length) return;
+  const sub = $('#inboxTarget').value || '';
+  if (!confirm('把选中的 ' + paths.length + ' 个文件移到：\n'
+      + LIB.root + (sub ? '\\' + sub : '') + '\n\n继续？')) return;
+  const r = await post('/api/inbox/move', {paths: paths, sub: sub});
+  const e = libErr(r);
+  if (e){ alert(e); return; }
+  $('#inboxMove').disabled = true;
+  clearInterval(LIB.timer);
+  LIB.timer = setInterval(async () => {
+    const st = await get('/api/inbox/state');
+    $('#inboxProg').textContent =
+      (st.busy ? `${st.message}　${st.done}/${st.total}` : (st.message || ''));
+    if (st.busy) return;
+    clearInterval(LIB.timer);
+    const ok = (st.results || []).filter(x => x.ok);
+    const bad = (st.results || []).filter(x => !x.ok);
+    let m = `完成 ${ok.length} / ${st.total}`;
+    if (ok.some(x => x.copied)) m += '\n（跨盘移动是复制，会比同盘慢一些）';
+    if (ok.some(x => x.renamed)) m += '\n有文件因重名被自动改名，没有覆盖任何文件';
+    if (bad.length) m += '\n\n失败的：\n'
+      + bad.map(x => `${x.name}：${x.error}`).join('\n');
+    alert(m);
+    LIB.inboxSel.clear();
+    inboxScan(); libLoad(null);
+    // V0.5.4：投进来的 LoRA 已经进了 ComfyUI 的 loras 目录，
+    // 左侧「勾 LoRA」那栏的候选来自 /api/bootstrap.loras，
+    // 不刷新的话新lora 要关掉重开验丹炉才认得 —— 正是用户报的那个现象。
+    // 失败不打断：搬文件已经成功了，刷新只是补 UI。
+    reloadBoot().catch(function(){
+      console.warn('投丹房后刷新 LoRA 列表失败');
+    });
+  }, 400);
+}
+
+/* ---- 库整理动作 ---- */
+async function libMkdirHere(inboxToo){
+  const sel = $('#inboxTarget');
+  const sub = inboxToo ? ((sel && sel.value) || '') : LIB.sub;
+  const name = await askText(inboxToo ? '新建子目录名：' : '新建文件夹名：');
+  if (!name) return;
+  const r = await post('/api/lib/mkdir', {sub: sub, name: name});
+  const e = libErr(r);
+  if (e){ alert(e); return; }
+  await libLoad(LIB.sub);
+  if (inboxToo && r.rel && sel) sel.value = r.rel;
+}
+
+/* 重命名。传 rel 就改那个；不传就用普通丹房当前选中的那个。 */
+async function libRename(rel){
+  rel = rel || [...PLAINSEL][0];
+  if (!rel) return;
+  // 预填的旧名字从收纳盒的数据里找（PLAINDIRS 才是当前真实显示的东西）。
+  // 原来查 LIB.list.files —— 那是老目录视图「当前目录」的文件，盒视图下
+  // 停在根目录，别的盒里的文件查不到，预填就会退化成整条相对路径。
+  const nv = await askText('新文件名（只改名字，不会把它挪到别的文件夹）：',
+                           plainName(rel));
+  if (!nv || !nv.trim()) return;
+  const r = await post('/api/lib/rename', {rel: rel, name: nv.trim()});
+  const e = libErr(r);
+  if (e){ alert(e); return; }
+  alert('改好了。' + (r.grade_moved
+    ? '\n它原来的品质标签也跟着搬到新名字上了，不会掉级。' : ''));
+  PLAINSEL.clear();
+  await libLoad(LIB.sub);
+  await renderPlainBoxes();
+  await renderRooms();
+}
+
+/* 「移动到…」弹窗。两种东西共用它：
+     openMoveTo(rels)             —— 搬一批 LoRA
+     openMoveTo([], [sub], '…')   —— 搬一整个收纳盒
+   靠 MOVEDIRS 区分，这样收尾逻辑（doMoveTo）只用写一份。 */
+let MOVESEL = [], MOVEDIRS = [], MOVEWHAT = '';
+
+function openMoveTo(rels, dirs, what){
+  MOVESEL = rels || [...PLAINSEL];
+  MOVEDIRS = dirs || [];
+  if (!MOVESEL.length && !MOVEDIRS.length) return;
+  MOVEWHAT = what || ('选中的 ' + MOVESEL.length + ' 个 LoRA');
+  fillDirSelect($('#mvTarget'), '');
+  $('#mvInfo').textContent = '把' + MOVEWHAT + '搬到：';
+  $('#mvModal').classList.add('on');
+}
+
+async function doMoveTo(){
+  const sub = $('#mvTarget').value || '';
+  $('#mvModal').classList.remove('on');
+  const isBox = MOVEDIRS.length > 0;
+  const list = isBox ? MOVEDIRS : MOVESEL;
+  if (!list.length) return;
+
+  const r = await post('/api/lib/move',
+    {rels: isBox ? [] : list, dirs: isBox ? list : [], sub: sub});
+  const e = libErr(r);
+  if (e){ alert(e); return; }
+
+  const done = (isBox ? r.boxes : r.moved) || [];
+  const fail = (isBox ? r.box_failed : r.failed) || [];
+  let m = done.length
+    ? ('搬好了，共 ' + done.length + ' 个' + (isBox ? '文件夹' : ''))
+    : '没有东西被搬动';
+  if (done.some(x => x.renamed))
+    m += '\n（有重名的已自动改名，没有覆盖任何东西）';
+  if (r.grade_moved) m += '\n品质标签已跟着搬走，不会掉级。';
+  if (fail.length)
+    m += '\n\n没搬动的：\n' + fail.map(x => x.rel + '：' + x.error).join('\n');
+  alert(m);
+
+  MOVESEL = []; MOVEDIRS = [];
+  PLAINSEL.clear();
+  await libLoad(null);
+  await renderPlainBoxes();
+  await renderRooms();
+}
+
+/* #libDel 那个按钮 —— 交给 delRels 走同一套确认与报结果，
+   免得两处各写一遍「放进回收站」的文案。 */
+function libDel(){
+  const rels = [...PLAINSEL];
+  if (rels.length) delRels(rels);
+}
+
+let DUPES = [];
+
+async function libDupes(){
+  const btn = $('#libDupes');
+  btn.disabled = true; btn.textContent = '查重中…';
+  const r = await get('/api/lib/dupes');
+  btn.disabled = false; btn.textContent = '查重复';
+  const e = libErr(r);
+  if (e){ alert(e); return; }
+  const g = r.groups || [];
+  const box = $('#libDupeBox');
+  box.classList.remove('hide');
+  if (!g.length){
+    DUPES = [];
+    box.innerHTML = '<b>没有发现内容重复的文件</b>'
+      + '<div class="p">按文件内容判断，跟文件名、路径无关：'
+      + '文件名不同但内容一样算重复；文件名相同但内容不同不算。</div>';
+    return;
+  }
+  DUPES = g;
+  const save = g.reduce((s, x) => s + (x.waste || 0), 0);
+  box.innerHTML =
+    `<div class="duphead">
+       <b>发现 ${g.length} 组内容相同的文件，清理重复可省出约 ${fsz(save)}</b>
+       <div class="dupact">
+         <button class="btn danger sm" id="dupDel">清理勾选的（<span id="dupN">0</span>）</button>
+         <button class="btn ghost sm" id="dupNone">全不选</button>
+         <button class="btn ghost sm" id="dupClose">收起</button>
+       </div>
+     </div>`
+    + g.map((x, i) => {
+        const tag = x.same_name
+          ? '<span class="dtag warn">同名不同路径</span>'
+          : '<span class="dtag">文件名不同，内容相同</span>';
+        return `<div class="dgrp">
+          <div class="dhead"><b>${fsz(x.size)} × ${x.count}</b>${tag}</div>
+          ${x.files.map((f, j) => `
+            <label class="df ${f.keep ? 'keep' : ''}">
+              <input type="checkbox" data-g="${i}" data-j="${j}" ${f.keep ? '' : 'checked'}>
+              <span class="drel">${esc(f.rel)}</span>
+              <span class="dbadge ${f.keep ? 'keep' : ''}">${f.keep ? '建议保留' : '重复'}</span>
+            </label>`).join('')}
+        </div>`;
+      }).join('');
+  box.scrollIntoView({block: 'nearest'});
+  bindDupes();
+}
+
+function dupChecked(){
+  return [...document.querySelectorAll('#libDupeBox input[type=checkbox]')]
+    .filter(c => c.checked)
+    .map(c => (DUPES[+c.dataset.g] || {}).files
+              && DUPES[+c.dataset.g].files[+c.dataset.j].rel)
+    .filter(Boolean);
+}
+
+function dupCount(){
+  const n = dupChecked().length;
+  const el = $('#dupN'); if (el) el.textContent = n;
+  const b = $('#dupDel'); if (b) b.disabled = !n;
+}
+
+function bindDupes(){
+  const box = $('#libDupeBox');
+  box.querySelectorAll('input[type=checkbox]').forEach(c => c.onchange = dupCount);
+  $('#dupNone').onclick = () => {
+    box.querySelectorAll('input[type=checkbox]').forEach(c => c.checked = false);
+    dupCount();
+  };
+  $('#dupClose').onclick = () => box.classList.add('hide');
+  $('#dupDel').onclick = dupDelete;
+  dupCount();
+}
+
+async function dupDelete(){
+  const rels = dupChecked();
+  if (!rels.length) return;
+  if (!confirm('把下面 ' + rels.length + ' 个重复文件放进系统回收站（可以恢复）：\n\n'
+      + rels.map(r => r.split(/[\\/]/).pop()).join('\n') + '\n\n继续？')) return;
+  const r = await post('/api/lib/delete', {rels: rels});
+  if (libErr(r)){ alert(libErr(r)); return; }
+  alert('已清理 ' + ((r.deleted || []).length) + ' 个\n' + (r.how || ''));
+  await libDupes();
+  await libLoad(LIB.sub);
+}
+
+/* ---- 监视目录 ---- */
+function renderWatch(){
+  const box = $('#watchList');
+  const dirs = ((S.boot && S.boot.lib) || {}).watch_dirs || [];
+  box.innerHTML = dirs.length
+    ? dirs.map(d => `<span class="witem">${esc(d)}<x data-d="${esc(d)}">×</x></span>`).join('')
+    : '<span class="libmeta">（还没设置）</span>';
+  box.querySelectorAll('x[data-d]').forEach(x =>
+    x.onclick = () => saveWatch(dirs.filter(d => d !== x.dataset.d)));
+}
+
+async function saveWatch(dirs){
+  const r = await post('/api/config', {watch_dirs: dirs});
+  if (libErr(r)){ alert(libErr(r)); return; }
+  S.boot.lib = S.boot.lib || {};
+  S.boot.lib.watch_dirs = dirs;
+  renderWatch();
+  // V0.5.4：改了监视目录，左侧「勾 LoRA」的候选（来自 /api/bootstrap）
+  // 也要跟着重拉 —— 新加的目录里那些 LoRA 之前不在候选里。
+  // 不加这行的话：设置改好了，但要关掉重开验丹炉才认得新目录。
+  reloadBoot().catch(function(){
+    console.warn('改监视目录后刷新 LoRA 列表失败');
+  });
+}
+
+async function libTab(){
+  renderWatch();
+  await renderRooms();
+  await renderPlainBoxes();
+  if (!LIB.loaded){ LIB.loaded = true; await libLoad(''); }
+  // 每个 LoRA 的类型 / 底模 / 自定义标签 / 触发词都来自打标结果，
+  // 没打过标就一个 chip 都不画（页面会显示成一列光秃秃的文件名）。
+  // 这不是 bug —— 读 271 个文件头有代价，不该你每次进丹房都跑一遍 ——
+  // 但必须说一声，否则新用户会以为标签那套功能没了。
+  if (!LIB.scanned){
+    setLibHint('想看每个 LoRA 的类型 / 触发词，点一次「自动打标签」就行（本地读文件头，不联网）');
+  }
+}
+
+/* ============================================================ 丹房 · 房间视图
+
+   两块东西**数据同源、组织维度不同**，这是 V0.5.2 定下来的分工：
+
+     品质丹房 —— 按**品质标签**分组，纯虚拟归档。
+       定级只动 tag_overrides.json，一个文件都不搬。理由是品质是主观评价、
+       随时会反悔，不该拿它去动磁盘；而且 ComfyUI 里引用了这些 LoRA 的
+       工作流也不会因为改个等级就失效。
+
+     普通丹房 —— 按**磁盘目录**分组成「收纳盒」。
+       在这里挪 LoRA 是真的在搬文件。理由也一样直白：目录是客观摆放，
+       用户要的就是让磁盘变整齐。
+
+   混在一起必然打架（一个说别动文件、一个说就要动），所以一开始就分开。 */
+let ROOMSEL = new Set();      // 品质丹房的选中（只能定级 / 删除）
+let PLAINSEL = new Set();     // 普通丹房的选中（能定级，也能搬文件）
+let PLAINFOLD = new Set();    // 折起来的收纳盒（默认全打开）
+let PLAINDIRS = [];           // 最近一次拿到的收纳盒数据
+let PLAINGRADE = {};          // rel → 品质等级，判「有没有定过级」用
+let PLAINALL = false;         // 普通丹房是否连已定级的一起显示
+let DRAGRELS = [];            // 正在拖的那批
+let GRADE_DIRTY = true;       // 别处定过级 → 进丹房要重拉一次
+
+/* /api/lib/index 的共享缓存定义在上面 post() 旁边（V0.5.3）——
+   它必须紧贴 post()，因为作废这件事就是在 post() 里触发的。 */
+
+function roomHTML(key, label, list, fg, bg){
+  const items = list.map(r => `
+    <div class="ritem" data-rel="${esc(r.rel)}" title="${esc(r.rel)}">
+      <span class="rname" style="color:${fg}">${esc(r.name)}</span>
+      <span class="rsz">${fsz(r.size)}</span>
+    </div>`).join('');
+  return `<div class="room" data-room="${esc(key)}">
+    <div class="roomhead">
+      <i class="dot" style="background:${fg}"></i>
+      <span style="color:${fg}">${esc(label)}</span>
+      <span class="rc">${list.length} 个</span>
+    </div>
+    <div class="rlist">${list.length ? items : '<div class="empty">还是空的</div>'}</div>
+    <div class="rfoot"></div>
+  </div>`;
+}
+
+async function renderRooms(){
+  const gb = $('#gradeRooms');
+  if (!gb) return;
+  // 走共享缓存，别自己拉 —— 见 libIndex() 的说明（V0.5.3）
+  const gi = await libIndex();
+  const grades = (gi.grades && gi.grades.length) ? gi.grades : (LIB.grades || []);
+  if (grades.length) LIB.grades = grades;
+  const err = libErr(gi);
+  if (err){
+    gb.innerHTML = '<div class="empty">' + esc(err) + '</div>';
+    return;
+  }
+  const groups = gi.groups || {};
+  gb.innerHTML = grades.map(g =>
+      roomHTML(g.key, g.label, groups[g.key] || [], g.fg, g.bg)).join('')
+    || '<div class="empty">没有品质档</div>';
+  // 已经从库里消失的选中项自动剔除，免得工具条算错数
+  const live = new Set(((gi.rows) || []).map(r => nrel(r.rel)));
+  [...ROOMSEL].forEach(r => { if (!live.has(r)) ROOMSEL.delete(r); });
+  bindRooms();
+  GRADE_DIRTY = false;
+}
+
+function bindRooms(){
+  document.querySelectorAll('#gradeRooms .ritem').forEach(it => {
+    it.onclick = () => {
+      const rel = nrel(it.dataset.rel);
+      if (ROOMSEL.has(rel)) ROOMSEL.delete(rel); else ROOMSEL.add(rel);
+      renderRoomSel();
+    };
+  });
+  renderRoomSel();
+}
+
+function renderRoomSel(){
+  document.querySelectorAll('#gradeRooms .ritem').forEach(it =>
+    it.classList.toggle('on', ROOMSEL.has(nrel(it.dataset.rel))));
+  document.querySelectorAll('#gradeRooms .room').forEach(rm => {
+    const foot = rm.querySelector('.rfoot');
+    if (!foot) return;
+    const rels = [...rm.querySelectorAll('.ritem')]
+      .map(x => nrel(x.dataset.rel)).filter(r => ROOMSEL.has(r));
+    if (!rels.length){ foot.innerHTML = ''; return; }
+    foot.innerHTML = `<span class="rfLab">选中 ${rels.length} 个：</span>`
+      + (LIB.grades || []).map(g =>
+          `<button class="dg" data-set="${esc(g.key)}" style="color:${g.fg}"
+             title="定级为${esc(g.label)}">${esc(g.label)}</button>`).join('')
+      + '<button class="dg" data-set="" title="去掉品质标签，它会自动回到普通丹房">撤回定级</button>'
+      + '<button class="dg" data-rm="1" style="color:#c0392b;border-color:#eec9c4">删除文件</button>';
+    foot.querySelectorAll('[data-set]').forEach(b => {
+      b.onclick = () => gradeRels(rels, b.dataset.set);
+    });
+    const rmB = foot.querySelector('[data-rm]');
+    if (rmB) rmB.onclick = () => delRels(rels);
+  });
+}
+
+async function gradeRels(rels, grade){
+  const r = await post('/api/lib/grade_set', {rels: rels, grade: grade || ''});
+  const e = libErr(r);
+  if (e){ alert(e); return; }
+  ROOMSEL.clear();
+  await renderRooms();
+  await renderPlainBoxes();
+  syncLibBtns();
+}
+
+async function delRels(rels){
+  if (!confirm('把下面 ' + rels.length + ' 个文件放进系统回收站：\n\n'
+      + rels.map(x => base(x)).join('\n') + '\n\n继续？')) return;
+  const r = await post('/api/lib/delete', {rels: rels});
+  const e = libErr(r);
+  if (e){ alert(e); return; }
+  let m = r.how || '完成';
+  if (r.failed && r.failed.length)
+    m += '\n\n没删掉的（多半正被 ComfyUI 占用）：\n'
+       + r.failed.map(x => x.rel + '：' + x.error).join('\n');
+  alert(m);
+  ROOMSEL.clear();
+  PLAINSEL.clear();
+  await renderRooms();
+  await renderPlainBoxes();
+  await libLoad(null);
+}
+
+/* ==================================================== 普通丹房 · 收纳盒
+
+   一盒 = 磁盘上一个真实目录。盒里的 LoRA 就是躺在那儿的那批文件。
+   「散落在根目录」那盒永远垫底 —— 它在直觉上属于「还没收拾」的那一堆。
+
+   默认只显示**没定级**的（保住 V0.5.1 定下的语义：普通丹房放没品质标签的）；
+   勾上「连已经定级的也一起显示」才铺开整库 —— 想整理磁盘布局时用那个。 */
+
+function gradeOfRel(rel){ return PLAINGRADE[nrel(rel)] || ''; }
+
+/* 按相对路径在**当前显示的收纳盒**里找显示名。找不到就退回取文件名 ——
+   退回值一定是对的（rel 的最后一段），所以不会出现「预填了个空字符串」。 */
+function plainName(rel){
+  const want = nrel(rel);
+  for (const d of PLAINDIRS){
+    const it = (d.items || []).find(x => nrel(x.rel) === want);
+    if (it && it.name) return it.name;
+  }
+  return base(rel);
+}
+
+function boxHTML(d){
+  const fold = PLAINFOLD.has(d.sub);
+  const items = d.items.map(r => {
+    const nm = nameGradeStyle(r.grade);
+    // 打过标签就把类型/底模/自定义标签/触发词一起带上，并交给 bindTagChips
+    // 绑事件 —— 否则「点标签改类别」「删自定义标签」这些 V0.3 就有的操作
+    // 会因为宿主从文件列表换成收纳盒而悄悄失效。
+    // 这些 chip 都读 info，而 info 只在打过标之后才有，所以没打过标的库
+    // 只显示「名字 + 大小」，进丹房时会有一条提示让人去点「自动打标签」。
+    const info = LIB.scanned ? (LIB.tags || {})[nrel(r.rel)] : null;
+    // 触发词 chip：V0.3 就在旧文件列表上，换成收纳盒视图时漏过一次 ——
+    // 它是「点一下复制到剪贴板」的常用动作，不能悄悄没掉。
+    // 数据来自打标结果（info.trigger）；后端 tag_one() 之前也漏搬了这个字段，
+    // 两边一起补上的（只补这一层，别顺手改判定逻辑）。
+    const trg = info && info.trigger;
+    return `<div class="bitem" data-rel="${esc(r.rel)}" draggable="true"
+        title="${esc(r.rel)}">
+      <span class="bname"${nm ? ' style="' + nm + '"' : ''}>${esc(r.name)}</span>
+      ${trg ? `<span class="tchip" data-trg="${esc(trg)}"
+        title="触发词（来源：${esc(info.trigger_label || info.trigger_src || '')}）点一下复制"
+        >${esc(trg)}</span>` : ''}
+      ${tagChips(info)}
+      <span class="rsz">${fsz(r.size)}</span>
+    </div>`;
+  }).join('');
+  return `<div class="box${fold ? ' fold' : ''}" data-sub="${esc(d.sub)}"`
+    + (d.is_root ? ' data-root="1"' : '') + `>
+    <div class="boxhead" data-sub="${esc(d.sub)}" title="${esc(d.label)}">
+      <i class="tri"></i>
+      <span class="bxtitle">${esc(d.name)}</span>
+      <span class="rc">${d.items.length} 个</span>
+      ${d.is_root ? '<span class="broot">还没收拾</span>' : ''}
+      <span class="bacts">
+        <button class="dg" data-act="all" title="把这一盒全选上">全选本盒</button>
+        <button class="dg" data-act="sub" title="在这个盒里再建一个子盒">＋子盒</button>
+        ${d.is_root ? '' :
+        `<button class="dg" data-act="ren" title="给这个盒改名">改名</button>
+         <button class="dg" data-act="mv" title="把这个盒整个搬到别处">整盒搬走</button>`}
+      </span>
+    </div>
+    <div class="blist">${items || '<div class="empty">还是空的</div>'}</div>
+  </div>`;
+}
+
+async function renderPlainBoxes(){
+  const host = $('#plainBoxes');
+  if (!host) return;
+  // 同样走共享缓存。libTab() 里 renderRooms() 在前，
+  // 这里命中它的结果，不再发第二趟 —— V0.5.3
+  const gi = await libIndex();
+  const err = libErr(gi);
+  if (err){ host.innerHTML = '<div class="empty">' + esc(err) + '</div>'; return; }
+  const grades = (gi.grades && gi.grades.length) ? gi.grades : (LIB.grades || []);
+  if (grades.length) LIB.grades = grades;
+
+  PLAINGRADE = {};
+  (gi.rows || []).forEach(r => { if (r.grade) PLAINGRADE[nrel(r.rel)] = r.grade; });
+
+  const q = (($('#libSearch') || {}).value || '').trim().toLowerCase();
+  // 标签筛选（V0.3 的「筛选」条）也要作用在这儿。它原来筛的是文件列表，
+  // 文件列表的宿主没了，功能不能跟着没 —— 不然点了筛选毫无反应。
+  const tagOK = r => {
+    if (!LIB.tagFilter) return true;
+    if (!LIB.scanned) return true;          // 还没打标签就别把人全藏了
+    const info = (LIB.tags || {})[nrel(r.rel)];
+    if (!info) return false;
+    if (LIB.tagFilterIsLabel)
+      return (info.labels || []).indexOf(LIB.tagFilter) >= 0;
+    if (LIB.tagFilter === '__manual') return info.confidence === 'manual';
+    if (LIB.tagFilter === '未识别') return info.cat === 'unknown';
+    if (LIB.tagFilter === info.base_label) return true;
+    return info.cat_label === LIB.tagFilter;
+  };
+  // 品质筛选（统计条上点某一档）同理。点「上品」的时候显然得把已定级的
+  // 放出来，所以这一路会**越过** PLAINALL 那道默认限制。
+  const wantGrade = LIB.tagFilterGrade || '';
+  const ok = r =>
+    (wantGrade ? r.grade === wantGrade : (PLAINALL || !r.grade))
+    && (!q || r.name.toLowerCase().includes(q))
+    && tagOK(r);
+  PLAINDIRS = (gi.dirs || [])
+    .map(d => Object.assign({}, d, {items: (d.items || []).filter(ok)}))
+    .filter(d => d.items.length);
+
+  // 搜索框的提示语跟着当前筛的是什么走。原来这段写在 renderFiles 里，
+  // 那段正文删掉后如果不搬过来，筛选生效了提示语还写着「按文件名筛选」，
+  // 用户会以为筛了个寂寞。
+  const se = $('#libSearch');
+  if (se){
+    se.placeholder = wantGrade
+      ? '在「' + ((gradeOf(wantGrade) || {}).label || wantGrade) + '」里按文件名筛选'
+      : (LIB.tagFilter && LIB.scanned)
+        ? '在「' + LIB.tagFilter + '」里按文件名筛选'
+        : '按文件名筛选';
+  }
+
+  // 已经从库里消失的选中项自动剔除
+  const live = new Set((gi.rows || []).map(r => nrel(r.rel)));
+  [...PLAINSEL].forEach(r => { if (!live.has(r)) PLAINSEL.delete(r); });
+
+  const why = q ? '没有文件名匹配的 LoRA'
+    : wantGrade ? '当前筛选「' + ((gradeOf(wantGrade) || {}).label || wantGrade)
+                  + '」下没有 LoRA'
+    : LIB.tagFilter ? '当前筛选「' + LIB.tagFilter + '」下没有 LoRA'
+    : PLAINALL ? '这个 loras 目录里还没有模型文件'
+    : '没有未定级的 LoRA —— 都归到上面的品质丹房了。'
+      + '勾上「连已经定级的也一起显示」就能看整库、整理目录。';
+  host.innerHTML = PLAINDIRS.length ? PLAINDIRS.map(boxHTML).join('')
+    : '<div class="empty">' + esc(why) + '</div>';
+  bindPlainBoxes();
+}
+
+function bindPlainBoxes(){
+  const host = $('#plainBoxes');
+  if (!host) return;
+
+  // 盒头：折叠 / 盒级操作
+  host.querySelectorAll('.boxhead').forEach(h => {
+    h.onclick = e => {
+      if (e.target.closest('.bacts')) return;
+      const s = h.dataset.sub;
+      if (PLAINFOLD.has(s)) PLAINFOLD.delete(s); else PLAINFOLD.add(s);
+      h.closest('.box').classList.toggle('fold');
+    };
+  });
+  host.querySelectorAll('.bacts .dg').forEach(b => {
+    b.onclick = e => {
+      e.stopPropagation();
+      const sub = b.closest('.box').dataset.sub;
+      const d = PLAINDIRS.find(x => x.sub === sub) || {items: [], sub: sub, name: sub};
+      const rels = d.items.map(x => nrel(x.rel));
+      const act = b.dataset.act;
+      if (act === 'all'){
+        const on = rels.length && rels.every(r => PLAINSEL.has(r));
+        rels.forEach(r => on ? PLAINSEL.delete(r) : PLAINSEL.add(r));
+        renderPlainSel();
+      } else if (act === 'sub') boxMkdir(sub);
+      else if (act === 'ren') boxRename(sub);
+      else if (act === 'mv') openMoveTo([], [sub], `整个「${d.name}」盒`);
+    };
+  });
+
+  // 触发词 chip：点一下复制。**必须 stopPropagation** ——
+  // 它长在条目里面，不拦的话点它会连带把这一行选中（连带清掉别的选中）。
+  host.querySelectorAll('.tchip').forEach(c => c.onclick = e => {
+    e.stopPropagation();
+    copyText(c.dataset.trg);
+    const old = c.textContent;
+    c.textContent = '已复制';
+    setTimeout(() => c.textContent = old, 900);
+  });
+
+  // 条目：点选（Ctrl 加选 / Shift 连选）+ 拖拽
+  host.querySelectorAll('.bitem').forEach(it => {
+    it.onclick = e => {
+      const rel = nrel(it.dataset.rel);
+      if (e.ctrlKey || e.metaKey){
+        if (PLAINSEL.has(rel)) PLAINSEL.delete(rel); else PLAINSEL.add(rel);
+      } else if (e.shiftKey && PLAINSEL.size){
+        const all = [...host.querySelectorAll('.bitem')].map(x => nrel(x.dataset.rel));
+        const last = [...PLAINSEL].pop();
+        const a = all.indexOf(last), b = all.indexOf(rel);
+        if (a >= 0 && b >= 0){
+          for (let i = Math.min(a, b); i <= Math.max(a, b); i++) PLAINSEL.add(all[i]);
+        } else PLAINSEL.add(rel);
+      } else {
+        // 点在唯一已选中的那个身上 = 取消选中，否则单选它
+        const only = PLAINSEL.size === 1 && PLAINSEL.has(rel);
+        PLAINSEL.clear();
+        if (!only) PLAINSEL.add(rel);
+      }
+      renderPlainSel();
+    };
+    it.ondragstart = e => {
+      const rel = nrel(it.dataset.rel);
+      if (!PLAINSEL.has(rel)){ PLAINSEL.clear(); PLAINSEL.add(rel); renderPlainSel(); }
+      DRAGRELS = [...PLAINSEL];
+      // dataTransfer 两行都放在 try 里：真浏览器一定有它，但少一个 try
+      // 就等于「拖起来的瞬间整个 handler 崩掉、拖拽完全没反应」——
+      // 而拖拽坏了很难从画面上看出来是坏在哪一步。
+      try {
+        e.dataTransfer.setData('text/plain', DRAGRELS.join('\n'));
+        e.dataTransfer.effectAllowed = 'move';
+      } catch (err) {}
+      it.classList.add('dragging');
+    };
+    it.ondragend = () => {
+      DRAGRELS = [];
+      host.querySelectorAll('.dragging').forEach(x => x.classList.remove('dragging'));
+      host.querySelectorAll('.box.over').forEach(x => x.classList.remove('over'));
+    };
+    // 右键菜单（定级四档 / 删自定义标签）。这套原来由 bindFileRows 绑在
+    // 文件行上，而那个函数要求行里有 checkbox —— 收纳盒的行是没有勾选框的，
+    // 所以得在这儿单独接一次，否则 README 里写着的右键功能就悄悄没了。
+    // 语义跟以前一致：右键点已选中的一批 = 对整批操作，点没选中的 = 只动它。
+    it.oncontextmenu = e => {
+      e.preventDefault();
+      const rel = nrel(it.dataset.rel);
+      const multi = PLAINSEL.has(rel) && PLAINSEL.size > 1;
+      openFileMenu(rel, e.clientX, e.clientY,
+                   multi ? [...PLAINSEL] : [rel]);
+    };
+  });
+
+  // 盒子：接住拖进来的 LoRA
+  host.querySelectorAll('.box').forEach(bx => {
+    const sub = bx.dataset.sub;
+    bx.ondragover = e => {
+      if (!DRAGRELS.length) return;
+      // 拖回它自己那个盒 = 原地不动，不接
+      if (DRAGRELS.every(r => nrel(r).split('/').slice(0, -1).join('/') === sub)) return;
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'move';
+      bx.classList.add('over');
+    };
+    bx.ondragleave = e => {
+      if (!bx.contains(e.relatedTarget)) bx.classList.remove('over');
+    };
+    bx.ondrop = e => {
+      e.preventDefault();
+      bx.classList.remove('over');
+      const rels = DRAGRELS.slice();
+      DRAGRELS = [];
+      if (rels.length) moveRelsTo(rels, sub);
+    };
+  });
+
+  // 分类 chip（点一下改类别）、自定义标签的 × 删除 —— 这些原来绑在文件行上，
+  // 宿主要换到收纳盒这边，行为必须跟以前一致
+  bindTagChips(host);
+  renderPlainSel();
+}
+
+function renderPlainSel(){
+  const host = $('#plainBoxes');
+  if (host) host.querySelectorAll('.bitem').forEach(it =>
+    it.classList.toggle('on', PLAINSEL.has(nrel(it.dataset.rel))));
+  const bar = $('#plainSel');
+  if (!bar) return;
+  const rels = [...PLAINSEL];
+  if (!rels.length){
+    bar.innerHTML = '<span class="dimtxt">点一个 LoRA 选中它，'
+      + '按住 Ctrl / Shift 可以多选；拖到别的收纳盒上就能搬过去。</span>';
+    syncLibBtns();
+    return;
+  }
+  const anyGraded = rels.some(r => gradeOfRel(r));
+  bar.innerHTML = `<span class="rfLab">选中 ${rels.length} 个：</span>`
+    + (LIB.grades || []).map(g =>
+        `<button class="dg" data-set="${esc(g.key)}" style="color:${esc(g.fg)}"
+           title="定级为${esc(g.label)}">${esc(g.label)}</button>`).join('')
+    + (anyGraded ? '<button class="dg" data-set="">撤回定级</button>' : '')
+    + '<span class="vsep"></span>'
+    + '<button class="dg" data-mv="1">移动到…</button>'
+    + (rels.length === 1 ? '<button class="dg" data-ren="1">重命名</button>' : '')
+    + '<button class="dg" data-rm="1" style="color:#c0392b;border-color:#eec9c4">删除文件</button>';
+  bar.querySelectorAll('[data-set]').forEach(b =>
+    b.onclick = () => gradeRels(rels, b.dataset.set));
+  const mv = bar.querySelector('[data-mv]');
+  if (mv) mv.onclick = () => openMoveTo(rels);
+  const rn = bar.querySelector('[data-ren]');
+  if (rn) rn.onclick = () => libRename(rels[0]);
+  const rm = bar.querySelector('[data-rm]');
+  if (rm) rm.onclick = () => delRels(rels);
+  syncLibBtns();
+}
+
+/* 把一批 LoRA 搬到某个收纳盒 —— 拖拽和「移动到…」弹窗最后都走这里，
+   免得两处各写一套「搬完之后怎么办」（刷新、报结果、清选中）。 */
+async function moveRelsTo(rels, sub, skipConfirm){
+  const d = PLAINDIRS.find(x => x.sub === sub);
+  const where = d ? d.name : (sub || '根目录');
+  if (!skipConfirm){
+    const lines = rels.slice(0, 12).map(r => '  ' + base(r));
+    if (rels.length > 12) lines.push('  …还有 ' + (rels.length - 12) + ' 个');
+    if (!confirm('把这 ' + rels.length + ' 个 LoRA 搬到「' + where + '」？\n\n'
+        + lines.join('\n')
+        + '\n\n注意：这是真的在磁盘上搬文件。已经定过级的，品质标签会跟着一起走。'))
+      return false;
+  }
+  const r = await post('/api/lib/move', {rels: rels, sub: sub});
+  const e = libErr(r);
+  if (e){ alert(e); return false; }
+  const n = (r.moved || []).length;
+  let msg = n ? ('已搬到「' + where + '」，共 ' + n + ' 个') : '没有文件被移动';
+  if ((r.moved || []).some(x => x.renamed))
+    msg += '\n（有重名的已自动改名，没有覆盖任何东西）';
+  if (r.grade_moved) msg += '\n品质标签已跟着搬走，不会掉级。';
+  if ((r.failed || []).length)
+    msg += '\n\n没搬动的（多半正被 ComfyUI 占用）：\n'
+         + r.failed.map(x => x.rel + '：' + x.error).join('\n');
+  alert(msg);
+  PLAINSEL.clear();
+  await renderPlainBoxes();
+  await renderRooms();
+  await libLoad(null);
+  return true;
+}
+
+/* ---- 盒级操作 ---- */
+async function boxMkdir(sub){
+  const name = await askText(sub
+    ? '在「' + sub + '」里再建一个子盒，名字：'
+    : '新建一个收纳盒，名字（会在 loras 根目录下建这个文件夹）：');
+  if (!name || !name.trim()) return;
+  const r = await post('/api/lib/mkdir', {sub: sub || '', name: name.trim()});
+  const e = libErr(r);
+  if (e){ alert(e); return; }
+  setLibHint('建好了：' + (r.rel || name.trim()));
+  await libLoad(null);          // 目录树变了，「移动到…」的下拉要跟着更新
+  await renderPlainBoxes();
+}
+
+async function boxRename(sub){
+  const cur = sub.split('/').pop();
+  const nv = await askText('给这个收纳盒改名：', cur);
+  if (!nv || !nv.trim() || nv.trim() === cur) return;
+  const r = await post('/api/lib/rename', {rel: sub, name: nv.trim()});
+  const e = libErr(r);
+  if (e){ alert(e); return; }
+  alert('改好了。' + (r.grade_moved
+    ? '\n盒里已经定过级的 LoRA，品质标签也跟着搬到新路径了。' : ''));
+  await libLoad(null);
+  await renderPlainBoxes();
+  await renderRooms();
+}
+
+$('#inboxScan').onclick = inboxScan;
+$('#inboxMove').onclick = inboxMove;
+$('#inboxMkdir').onclick = () => libMkdirHere(true);
+$('#inboxOnlyLora').onchange = renderInbox;
+$('#watchAdd').onclick = async () => {
+  const d = await askText('添加一个监视目录（完整路径）：');
+  if (!d || !d.trim()) return;
+  const cur = ((S.boot && S.boot.lib) || {}).watch_dirs || [];
+  if (cur.includes(d.trim())) return;
+  await saveWatch(cur.concat([d.trim()]));
+};
+$('#libMkdir').onclick = () => boxMkdir('');
+$('#libRename').onclick = () => libRename();
+$('#libMoveTo').onclick = () => openMoveTo();
+$('#libDel').onclick = libDel;
+$('#libDupes').onclick = libDupes;
+// V0.5.2：搜索框和「连已定级的一起显示」都是驱动收纳盒视图的。
+// 搜索框仍旧接到 renderFiles 上 —— 那个函数在宿主缺失时会转交给
+// renderPlainBoxes，所以凡是「筛选项变了」的调用点都会落到收纳盒上。
+$('#libSearch').oninput = renderFiles;
+$('#plainAll').onchange = e => {
+  PLAINALL = !!e.target.checked;
+  renderPlainBoxes();
+};
+$('#mvMkdir').onclick = async () => {
+  const cur = $('#mvTarget').value || '';
+  const name = await askText('在「' + (cur || '根目录') + '」下面新建子文件夹，名字：');
+  if (!name || !name.trim()) return;
+  const r = await post('/api/lib/mkdir', {sub: cur, name: name.trim()});
+  const e = libErr(r);
+  if (e){ alert(e); return; }
+  await libLoad(null);
+  fillDirSelect($('#mvTarget'), r.rel || cur);
+  setLibHint('建好了：' + (r.rel || name.trim()));
+};
+// V0.3
+$('#profApply').onclick = () => applyProfile(true);
+$('#profApplyP').onclick = () => applyProfile(false);
+$('#libTags').onclick = libTagScan;
+$('#libOrganize').onclick = openOrganizeDialog;
+$('#libTagClear').onclick = () => {
+  LIB.tagFilter = '';
+  LIB.tagFilterIsLabel = false;
+  // 品质那一档原来没被一起清掉：点过「上品」再点「显示全部」，
+  // 标签筛选是没了，品质筛选还挂着，看着像没生效。
+  LIB.tagFilterGrade = '';
+  if (LIB.tagRows.length) renderTagBar(tagStatsNow());
+  renderFiles();
+};
+$('#mvCancel').onclick = () => $('#mvModal').classList.remove('on');
+$('#mvOk').onclick = doMoveTo;
+$('#mvModal').onclick = e => { if (e.target.id === 'mvModal')
+  $('#mvModal').classList.remove('on'); };
+
+/* nav 里那三个是 <a href="/run|/hist|/lib">，点了就是真跳页（各板块互相独立），
+   所以不需要 onclick。但键盘 1 / 2 / 3 也能切 —— 顺手，也方便来回比对。 */
+document.addEventListener('keydown', e => {
+  if (e.metaKey || e.ctrlKey || e.altKey) return;
+  const t = e.target;
+  if (t && /^(INPUT|SELECT|TEXTAREA)$/.test(t.tagName)) return;
+  const k = {1: 'run', 2: 'hist', 3: 'lib'}[e.key];
+  if (k) location.href = '/' + k;
+});
+
+/* 鉴定台 · ① 鉴定报告单元的几个按钮 */
+$('#repSel').onchange = () => pickReport($('#repSel').value);
+$('#repOpen').onclick = () => {
+  if (HCUR) window.open('/files/' + urlSeg(HCUR) + '/report.html', '_blank');
+};
+$('#repImg').onclick = () => { if (HCUR) openFolder(HCUR); };
+$('#repDel').onclick = () => { if (HCUR) deleteRun(HCUR); };
+
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape'){
+    $('#lightbox').classList.remove('on');
+    $('#mvModal').classList.remove('on');
+    closeImport();
+  }
+});
+
+/* 桌面版切主题时，鉴定台里嵌着的那份报告要跟着换色。
+   报告的暗色是靠 URL 参数定的，改参数只能重载 iframe，所以这里重画一次。 */
+(function () {
+  const api = window.hxDesktop;
+  if (!api || !api.onThemeChange) return;
+  try {
+    api.onThemeChange(function () {
+      if (document.body.dataset.sec === 'hist') {
+        setTimeout(function () { renderReportPane(HCUR); }, 60);
+      }
+    });
+  } catch (e) { /* 网页版没有这个接口，忽略 */ }
+})();
+
+// boot() 的完成信号给 showSection 用（V0.5.3）。
+// BOOTWAIT 提前建好并挂 finally，boot() 内部失败也得兑现 ——
+// 否则 await 它的那条路会永远挂着骨架屏。
+BOOTWAIT = (async () => {
+  try { await boot(); }
+  finally { BOOTDONE = true; }
+})();
+</script>
+</body>
+</html>
